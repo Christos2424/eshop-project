@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Add Product - eShop{% endblock %}
+
+{% block content %}
+    <h1>Add New Product</h1>
+    
+    <form method="POST" action="{{ url_for('add_product') }}" class="product-form" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="name">Product Name:</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="description">Description:</label>
+            <textarea id="description" name="description" rows="4" required></textarea>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="price">Price ($):</label>
+                <input type="number" id="price" name="price" step="0.01" min="0" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="stock">Stock Quantity:</label>
+                <input type="number" id="stock" name="stock" min="0" required>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="category">Category:</label>
+            <input type="text" id="category" name="category">
+        </div>
+        
+        <div class="form-group">
+            <label for="image">Product Image:</label>
+            <input type="file" id="image" name="image" accept="image/*">
+        </div>
+        
+        <button type="submit" class="btn">Add Product</button>
+        <a href="{{ url_for('admin_products') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+{% endblock %}

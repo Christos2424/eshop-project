@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} - eShop{% endblock %}
+
+{% block content %}
+    <div class="product-detail">
+        <div class="product-images">
+            <img src="{{ product.image_url or url_for('static', filename='images/placeholder.png') }}" 
+                 alt="{{ product.name }}" class="main-image">
+        </div>
+        
+        <div class="product-info">
+            <h1>{{ product.name }}</h1>
+            <p class="price">${{ product.price }}</p>
+            <p class="stock">
+                {% if product.stock_quantity > 0 %}
+                    In Stock ({{ product.stock_quantity }} available)
+                {% else %}
+                    Out of Stock
+                {% endif %}
+            </p>
+            
+            <div class="description">
+                <h3>Description</h3>
+                <p>{{ product.description }}</p>
+            </div>
+            
+            {% if product.stock_quantity > 0 %}
+                <form action="{{ url_for('add_to_cart') }}" method="post" class="add-to-cart">
+                    <input type="hidden" name="product_id" value="{{ product.product_id }}">
+                    <div class="quantity-selector">
+                        <label for="quantity">Quantity:</label>
+                        <input type="number" id="quantity" name="quantity" 
+                               value="1" min="1" max="{{ product.stock_quantity }}">
+                    </div>
+                    <button type="submit" class="btn">Add to Cart</button>
+                </form>
+            {% endif %}
+            
+            <a href="{{ url_for('home') }}" class="back-link">← Back to Products</a>
+        </div>
+    </div>
+{% endblock %}

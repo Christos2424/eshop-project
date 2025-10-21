@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Home - eShop{% endblock %}
+
+{% block content %}
+    <h1>Welcome to eShop</h1>
+    
+    <div class="products-grid">
+        {% for product in products %}
+            <div class="product-card">
+                <div class="product-image">
+                    <img src="{{ product.image_url or url_for('static', filename='images/placeholder.png') }}" 
+                         alt="{{ product.name }}">
+                </div>
+                <div class="product-info">
+                    <h3>{{ product.name }}</h3>
+                    <p class="price">${{ product.price }}</p>
+                    <p>{{ product.description|truncate(100) }}</p>
+                    <div class="product-actions">
+                        <a href="{{ url_for('product_detail', product_id=product.product_id) }}" class="btn">View Details</a>
+                        <form action="{{ url_for('add_to_cart') }}" method="post" class="add-to-cart-form">
+                            <input type="hidden" name="product_id" value="{{ product.product_id }}">
+                            <input type="number" name="quantity" value="1" min="1" max="{{ product.stock_quantity }}">
+                            <button type="submit" class="btn">Add to Cart</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <p>No products available at the moment.</p>
+        {% endfor %}
+    </div>
+{% endblock %}
