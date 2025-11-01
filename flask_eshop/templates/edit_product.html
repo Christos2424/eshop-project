@@ -4,9 +4,8 @@
 
 {% block content %}
     <h1>Edit Product</h1>
-    <form method="POST" enctype="multipart/form-data">
-        <input type="hidden" name="existing_image" value="{{ product.image_url }}">
-        
+    
+    <form method="POST" action="{{ url_for('edit_product', product_id=product.product_id) }}" class="product-form">
         <div class="form-group">
             <label for="name">Product Name:</label>
             <input type="text" id="name" name="name" value="{{ product.name }}" required>
@@ -20,32 +19,18 @@
         <div class="form-row">
             <div class="form-group">
                 <label for="price">Price ($):</label>
-                <input type="number" id="price" name="price" step="0.01" min="0" 
-                       value="{{ product.price }}" required>
+                <input type="number" id="price" name="price" step="0.01" min="0" value="{{ "%.2f"|format(product.price) }}" required>
             </div>
             
             <div class="form-group">
                 <label for="stock">Stock Quantity:</label>
-                <input type="number" id="stock" name="stock" min="0" 
-                       value="{{ product.stock_quantity }}" required>
+                <input type="number" id="stock" name="stock" min="0" value="{{ product.stock_quantity }}" required>
             </div>
         </div>
         
         <div class="form-group">
             <label for="category">Category:</label>
             <input type="text" id="category" name="category" value="{{ product.category }}">
-        </div>
-        
-        <div class="form-group">
-            <label for="image">Product Image:</label>
-            <input type="file" id="image" name="image" accept="image/*">
-            {% if product.image_url %}
-                <div class="current-image">
-                    <img src="{{ url_for('static', filename='uploads/' + product.image_url) }}" 
-                         alt="{{ product.name }}" width="100">
-                    <span>Current Image</span>
-                </div>
-            {% endif %}
         </div>
         
         <button type="submit" class="btn">Update Product</button>

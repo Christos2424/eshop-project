@@ -125,6 +125,7 @@ def init_db():
     conn.commit()
     conn.close()
     print("Database initialized successfully!")
+    
 def hash_password(password):
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
@@ -247,12 +248,12 @@ def add_to_cart():
         session.modified = True
         
         flash("Item added to cart!", "success")
-        return redirect(url_for('product_detail', product_id=product_id))
+        return redirect(request.referrer or url_for('home'))
         
     except Exception as e:
         flash(f"Error: {str(e)}", 'danger')
-        return redirect(url_for('home'))
-
+        return redirect(request.referrer or url_for('home'))
+    
 @app.route("/cart")
 def view_cart():
     if "cart" not in session or not session["cart"]:
