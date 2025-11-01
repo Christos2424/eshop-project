@@ -1,56 +1,144 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory
-from flask_mysqldb import MySQL 
+from flask import Flask, render_template, request, redirect, url_for, session, flash, g
+import sqlite3
 import bcrypt
 import os
-import uuid
-from werkzeug.utils import secure_filename
+from contextlib import contextmanager
 
 app = Flask(__name__)
-
 app.secret_key = os.urandom(24)
 
-# Configuration
-app.config['MYSQL_HOST'] = 'localhost'
-app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = ''
-app.config['MYSQL_DB'] = 'eshop_db'
-app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
+# Database configuration
+DATABASE = 'eshop.db'
 
-# File upload configuration
-UPLOAD_FOLDER = 'static/uploads'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+def get_db():
+    """Get database connection"""
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(DATABASE)
+        db.row_factory = sqlite3.Row  # This enables column access by name
+    return db
 
-mysql = MySQL(app)
+@app.teardown_appcontext
+def close_connection(exception):
+    """Close database connection at the end of request"""
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
 
-# Create upload folder if not exists
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+@contextmanager
+def get_cursor():
+    """Context manager for database cursor"""
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        yield cursor
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
+    finally:
+        cursor.close()
 
-# Helper functions
+def init_db():
+    """Initialize the database with required tables and sample data"""
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row  # Add this line for dictionary access
+    cursor = conn.cursor()
+    
+    # Create users table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users(
+            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username VARCHAR(50) NOT NULL UNIQUE,
+            email VARCHAR(100) NOT NULL UNIQUE,
+            password_hash VARCHAR(255) NOT NULL,
+            role TEXT CHECK(role IN ('customer','admin')) DEFAULT 'customer',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Create products table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS products(
+            product_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name VARCHAR(100) NOT NULL,
+            description TEXT,
+            price DECIMAL(10,2) NOT NULL,
+            stock_quantity INTEGER NOT NULL DEFAULT 0,
+            category VARCHAR(50),
+            image_url VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Create orders table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS orders(
+            order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            total DECIMAL(10, 2) NOT NULL,
+            status TEXT CHECK(status IN ('pending','paid','shipped','cancelled')) DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(user_id)
+        )
+    ''')
+    
+    # Create order_items table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS order_items(
+            item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            quantity INTEGER NOT NULL,
+            price_at_purchase DECIMAL(10, 2) NOT NULL,
+            FOREIGN KEY (order_id) REFERENCES orders(order_id),
+            FOREIGN KEY (product_id) REFERENCES products(product_id)
+        )
+    ''')
+    
+    # Create admin user if it doesn't exist
+    admin_password = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt())
+    cursor.execute('''
+        INSERT OR IGNORE INTO users (username, email, password_hash, role) 
+        VALUES (?, ?, ?, ?)
+    ''', ('admin', 'admin@eshop.com', admin_password, 'admin'))
+    
+    # Check if products table is empty and insert sample data
+    cursor.execute("SELECT COUNT(*) as count FROM products")
+    result = cursor.fetchone()
+    if result['count'] == 0:  # Now we can use dictionary access here too!
+        # Insert sample products
+        sample_products = [
+            ('Laptop', 'High-performance laptop with 16GB RAM and 512GB SSD', 999.99, 10, 'Electronics', None),
+            ('Wireless Mouse', 'Ergonomic wireless mouse with long battery life', 29.99, 50, 'Electronics', None),
+            ('Mechanical Keyboard', 'RGB mechanical keyboard with blue switches', 79.99, 25, 'Electronics', None),
+            ('Headphones', 'Noise-cancelling Bluetooth headphones', 199.99, 15, 'Electronics', None),
+            ('Smartphone', 'Latest smartphone with high-resolution camera', 699.99, 30, 'Electronics', None),
+            ('Tablet', '10-inch tablet with stylus support', 399.99, 20, 'Electronics', None),
+        ]
+        
+        cursor.executemany('''
+            INSERT INTO products (name, description, price, stock_quantity, category, image_url)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', sample_products)
+    
+    conn.commit()
+    conn.close()
+    print("Database initialized successfully!")
 def hash_password(password):
-    # Generate hash and decode to string for storage
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
 def check_password(hashed_password, user_password):
-    # Encode both to bytes for comparison
-    return bcrypt.checkpw(
-        user_password.encode('utf-8'), 
-        hashed_password.encode('utf-8')
-    )
+    if isinstance(hashed_password, str):
+        hashed_password = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(user_password.encode('utf-8'), hashed_password)
 
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-# Routes
 @app.route("/")
 def home():
     try:
-        cur = mysql.connection.cursor()
-        cur.execute("SELECT * FROM products WHERE stock_quantity > 0")
-        products = cur.fetchall()
-        cur.close()
+        with get_cursor() as cur:
+            cur.execute("SELECT * FROM products WHERE stock_quantity > 0")
+            products = cur.fetchall()
         return render_template('index.html', products=products)
     except Exception as e:
         flash(f"Database error: {str(e)}", 'danger')
@@ -69,25 +157,23 @@ def register():
             return redirect(url_for('register'))
         
         try:
-            cur = mysql.connection.cursor()
-            cur.execute('SELECT * FROM users WHERE email = %s', (email,))
-            if cur.fetchone():
-                flash('Email already registered!', 'danger')
-                return redirect(url_for('register'))
-            
-            hashed_pw = hash_password(password)
-            cur.execute(
-                "INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s)",
-                (username, email, hashed_pw)
-            )
-            mysql.connection.commit()
-            cur.close()
+            with get_cursor() as cur:
+                # Check if user exists
+                cur.execute('SELECT * FROM users WHERE email = ?', (email,))
+                if cur.fetchone():
+                    flash('Email already registered!', 'danger')
+                    return redirect(url_for('register'))
+                
+                hashed_pw = hash_password(password)
+                cur.execute(
+                    "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
+                    (username, email, hashed_pw)
+                )
             
             flash('Registration successful! Please log in.', 'success')
             return redirect(url_for('login'))
         
         except Exception as e:
-            mysql.connection.rollback()
             flash(f"Error: {str(e)}", 'danger')
             return redirect(url_for('register'))
     
@@ -98,13 +184,11 @@ def login():
     if request.method == "POST":
         email = request.form["email"]
         password = request.form["password"]
-        
-        try: 
-            cur = mysql.connection.cursor()
-            cur.execute('SELECT * FROM users WHERE email = %s', (email,))
-            user = cur.fetchone()
-            cur.close()
-        
+        try:
+            with get_cursor() as cur:
+                cur.execute('SELECT * FROM users WHERE email = ?', (email,))
+                user = cur.fetchone()
+            
             if user and check_password(user['password_hash'], password):
                 session["user_id"] = user['user_id']
                 session["username"] = user['username']
@@ -130,16 +214,16 @@ def logout():
 @app.route("/product/<int:product_id>")
 def product_detail(product_id):
     try:
-        cur = mysql.connection.cursor()
-        cur.execute("SELECT * FROM products WHERE product_id = %s", (product_id,))
-        product = cur.fetchone()
-        cur.close()
+        with get_cursor() as cur:
+            cur.execute("SELECT * FROM products WHERE product_id = ?", (product_id,))
+            product = cur.fetchone()
         
         if not product:
             flash('Product not found', 'danger')
             return redirect(url_for('home'))
         
         return render_template('product.html', product=product)
+    
     except Exception as e:
         flash(f"Error: {str(e)}", 'danger')
         return redirect(url_for('home'))
@@ -160,6 +244,7 @@ def add_to_cart():
         cart = session['cart']
         cart[str(product_id)] = cart.get(str(product_id), 0) + quantity
         session["cart"] = cart
+        session.modified = True
         
         flash("Item added to cart!", "success")
         return redirect(url_for('product_detail', product_id=product_id))
@@ -176,52 +261,38 @@ def view_cart():
     try:
         cart = session["cart"]
         product_ids = list(cart.keys())
+        
         if not product_ids:
             return render_template('cart.html', cart_items=[], total=0)
         
-        format_strings = ','.join(['%s'] * len(product_ids))
+        placeholders = ','.join(['?'] * len(product_ids))
         
-        cur = mysql.connection.cursor()
-        cur.execute(
-            f"SELECT * FROM products WHERE product_id IN ({format_strings})",
-            tuple(product_ids)
-        )
-        products = cur.fetchall()
-        cur.close()
+        with get_cursor() as cur:
+            cur.execute(
+                f"SELECT * FROM products WHERE product_id IN ({placeholders})",
+                product_ids
+            )
+            products = cur.fetchall()
         
         cart_items = []
         total = 0
         
         for product in products:
             pid = str(product["product_id"])
-            qty = cart[pid]
+            qty = cart[pid]  
             item_total = product["price"] * qty
             cart_items.append({
                 "product": product,
                 "quantity": qty,
                 "total": item_total
-            })
+            })      
             total += item_total
         
-        return render_template("cart.html", cart_items=cart_items, total=total) 
+        return render_template("cart.html", cart_items=cart_items, total=total)
+    
     except Exception as e:
         flash(f"Error loading cart: {str(e)}", "danger")
         return render_template("cart.html", cart_items=[], total=0)
-
-@app.route('/remove_from_cart', methods=['POST'])
-def remove_from_cart():
-    if 'cart' not in session or not session['cart']:
-        return redirect(url_for('view_cart'))
-    
-    product_id = request.form['product_id']
-    cart = session['cart']
-    
-    if str(product_id) in cart:
-        del cart[str(product_id)]
-        session['cart'] = cart
-        flash('Item removed from cart', 'success')
-    
-    return redirect(url_for('view_cart'))
 
 @app.route("/checkout", methods=['POST'])
 def checkout():
@@ -242,91 +313,77 @@ def checkout():
             flash("Your cart is empty", 'warning')
             return redirect(url_for("view_cart"))
         
-        cur = mysql.connection.cursor()
-        cur.execute("START TRANSACTION")
+        db = get_db()
+        db.execute("BEGIN TRANSACTION")
         
-        format_strings = ",".join(['%s'] * len(product_ids))
-        cur.execute(
-            f"SELECT product_id, price, stock_quantity, name FROM products WHERE product_id IN ({format_strings}) FOR UPDATE",
-            tuple(product_ids)
-        )
-        products = {str(p['product_id']): p for p in cur.fetchall()}
-        
-        total = 0
-        insufficient_stock = []
-        
-        for pid, qty in cart.items():
-            if pid not in products:
-                flash(f"Product ID {pid} no longer available", 'danger')
+        try:
+            cur = db.cursor()
+            placeholders = ','.join(['?'] * len(product_ids))
+            
+            # Get product details
+            cur.execute(
+                f"SELECT product_id, price, stock_quantity, name FROM products WHERE product_id IN ({placeholders})",
+                product_ids
+            )
+            products = {str(row['product_id']): dict(row) for row in cur.fetchall()}
+            
+            total = 0
+            insufficient_stock = []
+            
+            # Check stock availability and calculate total
+            for pid, qty in cart.items():
+                if pid not in products:
+                    flash(f"Product ID {pid} no longer available", 'danger')
+                    return redirect(url_for('view_cart'))
+                    
+                product = products[pid]
+                if product['stock_quantity'] < qty:
+                    insufficient_stock.append(product['name'])
+                total += product['price'] * qty
+            
+            if insufficient_stock:
+                flash(f"Insufficient stock for: {', '.join(insufficient_stock)}", 'danger')
+                db.rollback()
                 return redirect(url_for('view_cart'))
-                
-            product = products[pid]
-            if product['stock_quantity'] < qty:
-                insufficient_stock.append(product['name'])
-            total += product['price'] * qty
-        
-        if insufficient_stock:
-            flash(f"Insufficient stock for: {', '.join(insufficient_stock)}", 'danger')
-            cur.execute("ROLLBACK")
-            cur.close()
-            return redirect(url_for('view_cart'))
-        
-        cur.execute(
-            "INSERT INTO orders (user_id, total) VALUES (%s, %s)",
-            (user_id, total)
-        )
-        order_id = cur.lastrowid
-        
-        for pid, qty in cart.items():
-            product = products[pid]
+            
+            # Create order
             cur.execute(
-                """INSERT INTO order_items 
-                (order_id, product_id, quantity, price_at_purchase)
-                VALUES (%s, %s, %s, %s)""",
-                (order_id, int(pid), qty, product['price'])
+                "INSERT INTO orders (user_id, total) VALUES (?, ?)",
+                (user_id, total)
             )
-            cur.execute(
-                "UPDATE products SET stock_quantity = stock_quantity - %s WHERE product_id = %s",
-                (qty, int(pid))
-            )
-        
-        mysql.connection.commit()
-        cur.close()
-        
-        session.pop('cart', None)
-        flash(f'Order #{order_id} placed successfully!', 'success')
-        return redirect(url_for('home'))
-        
+            order_id = cur.lastrowid
+            
+            # Add order items and update stock
+            for pid, qty in cart.items():
+                product = products[pid]
+                cur.execute(
+                    """INSERT INTO order_items 
+                    (order_id, product_id, quantity, price_at_purchase)
+                    VALUES (?, ?, ?, ?)""",
+                    (order_id, int(pid), qty, product['price'])
+                )
+                # Update stock
+                cur.execute(
+                    "UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?",
+                    (qty, int(pid))
+                )
+            
+            db.commit()
+            
+            # Clear cart
+            session.pop('cart', None)
+            session.modified = True
+            
+            flash(f'Order #{order_id} placed successfully!', 'success')
+            return redirect(url_for('home'))
+            
+        except Exception as e:
+            db.rollback()
+            raise e
+            
     except Exception as e:
-        mysql.connection.rollback()
         flash(f"Checkout failed: {str(e)}", 'danger')
         return redirect(url_for('view_cart'))
-
-@app.route('/orders')
-def user_orders():
-    if 'user_id' not in session:
-        flash('Please log in first', 'warning')
-        return redirect(url_for('login'))
-    
-    try:
-        user_id = session['user_id']
-        cur = mysql.connection.cursor()
-        cur.execute("""
-            SELECT o.order_id, o.total, o.status, o.created_at,
-                   GROUP_CONCAT(p.name SEPARATOR ', ') AS products
-            FROM orders o
-            JOIN order_items oi ON o.order_id = oi.order_id
-            JOIN products p ON oi.product_id = p.product_id
-            WHERE o.user_id = %s
-            GROUP BY o.order_id
-            ORDER BY o.created_at DESC
-        """, (user_id,))
-        orders = cur.fetchall()
-        cur.close()
-        return render_template('orders.html', orders=orders)
-    except Exception as e:
-        flash(f"Error: {str(e)}", 'danger')
-        return redirect(url_for('home'))
 
 @app.route('/admin/products')
 def admin_products():
@@ -335,10 +392,9 @@ def admin_products():
         return redirect(url_for('home'))
     
     try:
-        cur = mysql.connection.cursor()
-        cur.execute("SELECT * FROM products")
-        products = cur.fetchall()
-        cur.close()
+        with get_cursor() as cur:
+            cur.execute("SELECT * FROM products")
+            products = cur.fetchall()
         return render_template('admin_products.html', products=products)
     except Exception as e:
         flash(f"Error: {str(e)}", 'danger')
@@ -356,30 +412,18 @@ def add_product():
         price = float(request.form['price'])
         stock = int(request.form['stock'])
         category = request.form['category']
-        image = request.files['image']
-        image_url = None
-
-        if image and allowed_file(image.filename):
-            filename = secure_filename(image.filename)
-            unique_filename = str(uuid.uuid4()) + '_' + filename
-            image_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-            image.save(image_path)
-            image_url = unique_filename
         
         try:
-            cur = mysql.connection.cursor()
-            cur.execute(
-                """INSERT INTO products 
-                (name, description, price, stock_quantity, category, image_url)
-                VALUES (%s, %s, %s, %s, %s, %s)""",
-                (name, description, price, stock, category, image_url)
-            )
-            mysql.connection.commit()
-            cur.close()
+            with get_cursor() as cur:
+                cur.execute(
+                    """INSERT INTO products 
+                    (name, description, price, stock_quantity, category)
+                    VALUES (?, ?, ?, ?, ?)""",
+                    (name, description, price, stock, category)
+                )
             flash('Product added successfully!', 'success')
             return redirect(url_for('admin_products'))
         except Exception as e:
-            mysql.connection.rollback()
             flash(f"Error: {str(e)}", 'danger')
             return render_template('add_product.html')
     
@@ -391,43 +435,33 @@ def edit_product(product_id):
         flash('Admin access required', 'danger')
         return redirect(url_for('home'))
     
-    cur = mysql.connection.cursor()
-    if request.method == 'POST':
-        name = request.form['name']
-        description = request.form['description']
-        price = float(request.form['price'])
-        stock = int(request.form['stock'])
-        category = request.form['category']
-        image = request.files['image']
-        existing_image = request.form.get('existing_image')
-        image_url = existing_image
-        
-        if image and allowed_file(image.filename):
-            filename = secure_filename(image.filename)
-            unique_filename = str(uuid.uuid4()) + '_' + filename
-            image_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-            image.save(image_path)
-            image_url = unique_filename
-        
-        try:
-            cur.execute(
-                """UPDATE products SET 
-                name=%s, description=%s, price=%s, 
-                stock_quantity=%s, category=%s, image_url=%s
-                WHERE product_id=%s""",
-                (name, description, price, stock, category, image_url, product_id)
-            )
-            mysql.connection.commit()
-            flash('Product updated!', 'success')
-            return redirect(url_for('admin_products'))
-        except Exception as e:
-            mysql.connection.rollback()
-            flash(f'Error: {str(e)}', 'danger')
-    
-    cur.execute("SELECT * FROM products WHERE product_id=%s", (product_id,))
-    product = cur.fetchone()
-    cur.close()
-    return render_template('edit_product.html', product=product)
+    try:
+        with get_cursor() as cur:
+            if request.method == 'POST':
+                name = request.form['name']
+                description = request.form['description']
+                price = float(request.form['price'])
+                stock = int(request.form['stock'])
+                category = request.form['category']
+                
+                cur.execute(
+                    """UPDATE products 
+                    SET name=?, description=?, price=?, stock_quantity=?, category=?
+                    WHERE product_id=?""",
+                    (name, description, price, stock, category, product_id)
+                )
+                flash('Product updated successfully!', 'success')
+                return redirect(url_for('admin_products'))
+            else:
+                cur.execute("SELECT * FROM products WHERE product_id = ?", (product_id,))
+                product = cur.fetchone()
+                if not product:
+                    flash('Product not found', 'danger')
+                    return redirect(url_for('admin_products'))
+                return render_template('edit_product.html', product=product)
+    except Exception as e:
+        flash(f"Error: {str(e)}", 'danger')
+        return redirect(url_for('admin_products'))
 
 @app.route('/admin/delete_product/<int:product_id>', methods=['POST'])
 def delete_product(product_id):
@@ -436,93 +470,33 @@ def delete_product(product_id):
         return redirect(url_for('home'))
     
     try:
-        cur = mysql.connection.cursor()
-        cur.execute("DELETE FROM products WHERE product_id=%s", (product_id,))
-        mysql.connection.commit()
-        flash('Product deleted!', 'success')
+        with get_cursor() as cur:
+            cur.execute("DELETE FROM products WHERE product_id = ?", (product_id,))
+        flash('Product deleted successfully!', 'success')
     except Exception as e:
-        mysql.connection.rollback()
-        flash(f'Error: {str(e)}', 'danger')
+        flash(f"Error: {str(e)}", 'danger')
+    
     return redirect(url_for('admin_products'))
 
-@app.route('/admin/orders')
-def admin_orders():
-    if 'role' not in session or session['role'] != 'admin':
-        flash('Admin access required', 'danger')
-        return redirect(url_for('home'))
-    
-    try:
-        cur = mysql.connection.cursor()
-        cur.execute("""
-            SELECT o.order_id, u.username, o.total, o.status, o.created_at
-            FROM orders o
-            JOIN users u ON o.user_id = u.user_id
-            ORDER BY o.created_at DESC
-        """)
-        orders = cur.fetchall()
-        cur.close()
-        return render_template('admin_orders.html', orders=orders)
-    except Exception as e:
-        flash(f"Error: {str(e)}", 'danger')
-        return redirect(url_for('admin_products'))
+@app.route('/remove_from_cart', methods=['POST'])
+def remove_from_cart():
+    if 'cart' in session and 'product_id' in request.form:
+        product_id = request.form['product_id']
+        cart = session['cart']
+        if str(product_id) in cart:
+            del cart[str(product_id)]
+            session['cart'] = cart
+            session.modified = True
+            flash('Item removed from cart', 'success')
+    return redirect(url_for('view_cart'))
 
-@app.route('/admin/order/<int:order_id>')
-def admin_order_detail(order_id):
-    if 'role' not in session or session['role'] != 'admin':
-        flash('Admin access required', 'danger')
-        return redirect(url_for('home'))
-    
-    try:
-        cur = mysql.connection.cursor()
-        # Get order summary
-        cur.execute("""
-            SELECT o.*, u.username, u.email
-            FROM orders o
-            JOIN users u ON o.user_id = u.user_id
-            WHERE o.order_id = %s
-        """, (order_id,))
-        order = cur.fetchone()
-        
-        if not order:
-            flash('Order not found', 'danger')
-            return redirect(url_for('admin_orders'))
-        
-        # Get order items
-        cur.execute("""
-            SELECT oi.*, p.name, p.image_url
-            FROM order_items oi
-            JOIN products p ON oi.product_id = p.product_id
-            WHERE oi.order_id = %s
-        """, (order_id,))
-        items = cur.fetchall()
-        cur.close()
-        
-        return render_template('admin_order_detail.html', order=order, items=items)
-    except Exception as e:
-        flash(f"Error: {str(e)}", 'danger')
-        return redirect(url_for('admin_orders'))
-
-@app.route('/admin/update_order_status/<int:order_id>', methods=['POST'])
-def update_order_status(order_id):
-    if 'role' not in session or session['role'] != 'admin':
-        flash('Admin access required', 'danger')
-        return redirect(url_for('home'))
-    
-    new_status = request.form['status']
-    try:
-        cur = mysql.connection.cursor()
-        cur.execute(
-            "UPDATE orders SET status = %s WHERE order_id = %s",
-            (new_status, order_id)
-        )
-        mysql.connection.commit()
-        cur.close()
-        flash('Order status updated!', 'success')
-    except Exception as e:
-        mysql.connection.rollback()
-        flash(f'Error: {str(e)}', 'danger')
-    return redirect(url_for('admin_orders'))
-
-# Run the application
 if __name__ == '__main__':
+    # Initialize database if it doesn't exist
+    if not os.path.exists(DATABASE):
+        init_db()
+        print("Database created successfully!")
+    else:
+        # Always ensure tables exist
+        init_db()
+    
     app.run(debug=True)
