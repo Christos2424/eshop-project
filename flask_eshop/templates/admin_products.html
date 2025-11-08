@@ -26,7 +26,7 @@
                     <tr>
                         <td>{{ product.product_id }}</td>
                         <td>{{ product.name }}</td>
-                        <td>${{ product.price }}</td>
+                        <td>${{ "%.2f"|format(product.price) }}</td>
                         <td>{{ product.stock_quantity }}</td>
                         <td>{{ product.category }}</td>
                         <td>

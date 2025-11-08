@@ -125,6 +125,7 @@ def init_db():
     conn.commit()
     conn.close()
     print("Database initialized successfully!")
+    
 def hash_password(password):
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
@@ -184,6 +185,8 @@ def login():
     if request.method == "POST":
         email = request.form["email"]
         password = request.form["password"]
+        next_page = request.form.get('next') or request.args.get('next')
+        
         try:
             with get_cursor() as cur:
                 cur.execute('SELECT * FROM users WHERE email = ?', (email,))
@@ -194,7 +197,9 @@ def login():
                 session["username"] = user['username']
                 session["role"] = user['role']
                 flash('Login successful!', 'success')
-                return redirect(url_for('home'))
+                
+                # Redirect to the requested page or home
+                return redirect(next_page or url_for('home'))
             else:
                 flash('Invalid email or password', 'danger')
                 return redirect(url_for('login'))
@@ -203,8 +208,9 @@ def login():
             flash(f"Database error: {str(e)}", 'danger')
             return redirect(url_for("login"))
     
-    return render_template('login.html')
-
+    # GET request - show login form
+    next_page = request.args.get('next', '')
+    return render_template('login.html', next=next_page)
 @app.route('/logout')
 def logout():
     session.clear()
@@ -230,10 +236,7 @@ def product_detail(product_id):
 
 @app.route('/add_to_cart', methods=['POST'])
 def add_to_cart():
-    if 'user_id' not in session:
-        flash('Please log in first', 'warning')
-        return redirect(url_for('login'))
-    
+
     product_id = request.form['product_id']
     quantity = int(request.form.get('quantity', 1))
     
@@ -247,12 +250,12 @@ def add_to_cart():
         session.modified = True
         
         flash("Item added to cart!", "success")
-        return redirect(url_for('product_detail', product_id=product_id))
+        return redirect(request.referrer or url_for('home'))
         
     except Exception as e:
         flash(f"Error: {str(e)}", 'danger')
-        return redirect(url_for('home'))
-
+        return redirect(request.referrer or url_for('home'))
+    
 @app.route("/cart")
 def view_cart():
     if "cart" not in session or not session["cart"]:
@@ -300,6 +303,9 @@ def checkout():
         flash('Please log in first', 'warning')
         return redirect(url_for('login'))
     
+    if request.method == 'GET':
+        return render_template('checkout.html')
+
     if "cart" not in session or not session["cart"]:
         flash("Your cart is empty", 'warning')
         return redirect(url_for("view_cart"))

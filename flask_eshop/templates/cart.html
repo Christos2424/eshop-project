@@ -27,9 +27,9 @@
                                     <span>{{ item.product.name }}</span>
                                 </div>
                             </td>
-                            <td>${{ item.product.price }}</td>
+                            <td>${{ "%.2f"|format(item.product.price) }}</td>
                             <td>{{ item.quantity }}</td>
-                            <td>${{ item.total }}</td>
+                            <td>${{ "%.2f"|format(item.total) }}</td>
                             <td>
                                 <form action="{{ url_for('remove_from_cart') }}" method="post">
                                     <input type="hidden" name="product_id" value="{{ item.product.product_id }}">
@@ -41,15 +41,32 @@
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="3" class="text-right">Grand Total:</td>
-                        <td colspan="2">${{ total }}</td>
+                        <td colspan="3" class="text-right"><strong>Grand Total:</strong></td>
+                        <td colspan="2"><strong>${{ "%.2f"|format(total) }}</strong></td>
                     </tr>
                 </tfoot>
             </table>
             
             <div class="cart-actions">
-                <a href="{{ url_for('home') }}" class="btn">Continue Shopping</a>
-                <a href="{{ url_for('checkout') }}" class="btn btn-primary">Proceed to Checkout</a>
+                <div class="cart-action-left">
+                    <a href="{{ url_for('home') }}" class="btn">Continue Shopping</a>
+                </div>
+                
+                <div class="cart-action-right">
+                    {% if session.user_id %}
+                        <!-- User is logged in - show checkout button -->
+                        <form action="{{ url_for('checkout') }}" method="POST">
+                            <button type="submit" class="btn btn-primary">Proceed to Checkout</button>
+                        </form>
+                    {% else %}
+                        <!-- User is not logged in - show login prompt -->
+                        <div class="checkout-login-prompt">
+                            <p>Please log in to complete your purchase</p>
+                            <a href="{{ url_for('login', next=url_for('view_cart')) }}" class="btn btn-primary">Log in to Checkout</a>
+                            <p class="register-prompt">Don't have an account? <a href="{{ url_for('register') }}">Register here</a></p>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     {% else %}
