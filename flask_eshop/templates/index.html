@@ -9,7 +9,7 @@
         {% for product in products %}
             <div class="product-card">
                 <div class="product-image">
-                    <img src="{{ product.image_url or url_for('static', filename='images/placeholder.png') }}" 
+                    <img src="{{ get_image_url(product.image_url) }}" alt="{{ product.name }}">
                          alt="{{ product.name }}">
                 </div>
                 <div class="product-info">

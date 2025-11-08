@@ -5,13 +5,12 @@
 {% block content %}
     <div class="product-detail">
         <div class="product-images">
-            <img src="{{ product.image_url or url_for('static', filename='images/placeholder.png') }}" 
-                 alt="{{ product.name }}" class="main-image">
+            <img src="{{ get_image_url(product.image_url) }}" alt="{{ product.name }}">
         </div>
         
         <div class="product-info">
             <h1>{{ product.name }}</h1>
-            <p class="price">${{ product.price }}</p>
+            <p class="price">${{ "%.2f"|format(product.price) }}</p>
             <p class="stock">
                 {% if product.stock_quantity > 0 %}
                     In Stock ({{ product.stock_quantity }} available)
@@ -33,11 +32,15 @@
                         <input type="number" id="quantity" name="quantity" 
                                value="1" min="1" max="{{ product.stock_quantity }}">
                     </div>
-                    <button type="submit" class="btn">Add to Cart</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-cart-plus"></i> Add to Cart
+                    </button>
                 </form>
             {% endif %}
             
-            <a href="{{ url_for('home') }}" class="back-link">← Back to Products</a>
+            <a href="{{ url_for('home') }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Products
+            </a>
         </div>
-    </div>
+    </div> 
 {% endblock %}
