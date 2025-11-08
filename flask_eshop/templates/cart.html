@@ -22,7 +22,8 @@
                         <tr>
                             <td>
                                 <div class="cart-product">
-                                    <img src="{{ get_image_url(product.image_url) }}" alt="{{ product.name }}">
+                                    <img src="{{ item.product.image_url or url_for('static', filename='images/placeholder.png') }}" 
+                                         alt="{{ item.product.name }}" width="50">
                                     <span>{{ item.product.name }}</span>
                                 </div>
                             </td>
@@ -32,9 +33,7 @@
                             <td>
                                 <form action="{{ url_for('remove_from_cart') }}" method="post">
                                     <input type="hidden" name="product_id" value="{{ item.product.product_id }}">
-                                    <button type="submit" class="btn btn-sm btn-danger">
-                                        <i class="fas fa-trash"></i> Remove
-                                    </button>
+                                    <button type="submit" class="btn btn-sm">Remove</button>
                                 </form>
                             </td>
                         </tr>
@@ -50,26 +49,20 @@
             
             <div class="cart-actions">
                 <div class="cart-action-left">
-                    <a href="{{ url_for('home') }}" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Continue Shopping
-                    </a>
+                    <a href="{{ url_for('home') }}" class="btn">Continue Shopping</a>
                 </div>
                 
                 <div class="cart-action-right">
                     {% if session.user_id %}
                         <!-- User is logged in - show checkout button -->
                         <form action="{{ url_for('checkout') }}" method="POST">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="fas fa-credit-card"></i> Proceed to Checkout
-                            </button>
+                            <button type="submit" class="btn btn-primary">Proceed to Checkout</button>
                         </form>
                     {% else %}
                         <!-- User is not logged in - show login prompt -->
                         <div class="checkout-login-prompt">
                             <p>Please log in to complete your purchase</p>
-                            <a href="{{ url_for('login', next=url_for('view_cart')) }}" class="btn btn-primary">
-                                <i class="fas fa-sign-in-alt"></i> Log in to Checkout
-                            </a>
+                            <a href="{{ url_for('login', next=url_for('view_cart')) }}" class="btn btn-primary">Log in to Checkout</a>
                             <p class="register-prompt">Don't have an account? <a href="{{ url_for('register') }}">Register here</a></p>
                         </div>
                     {% endif %}
@@ -78,12 +71,8 @@
         </div>
     {% else %}
         <div class="empty-cart">
-            <i class="fas fa-shopping-cart"></i>
-            <h3>Your cart is empty</h3>
-            <p>Browse our products and add some items to your cart!</p>
-            <a href="{{ url_for('home') }}" class="btn btn-primary">
-                <i class="fas fa-shopping-bag"></i> Browse Products
-            </a>
+            <p>Your cart is empty</p>
+            <a href="{{ url_for('home') }}" class="btn">Browse Products</a>
         </div>
     {% endif %}
 {% endblock %}
