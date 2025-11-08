@@ -2,20 +2,51 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import sqlite3
 import bcrypt
 import os
+import urllib.request
+from urllib.parse import urlparse
+from werkzeug.utils import secure_filename
 from contextlib import contextmanager
-
+import uuid
+ 
+ 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
 # Database configuration
 DATABASE = 'eshop.db'
 
+# Image upload configuration
+UPLOAD_FOLDER = 'static/uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
+
+@app.context_processor
+def utility_processor():
+    def get_image_url(image_url):
+        if not image_url:
+            return url_for('static', filename='images/placeholder.png')
+        
+        # If it starts with uploads/, it's a local file
+        if image_url.startswith('uploads/'):
+            return url_for('static', filename=image_url)
+        
+        # Otherwise, it's an external URL
+        return image_url
+    
+    return dict(get_image_url=get_image_url)
+# Ensure upload directory exists when module is imported
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
 def get_db():
     """Get database connection"""
     db = getattr(g, '_database', None)
     if db is None:
         db = g._database = sqlite3.connect(DATABASE)
-        db.row_factory = sqlite3.Row  # This enables column access by name
+        db.row_factory = sqlite3.Row
     return db
 
 @app.teardown_appcontext
@@ -39,10 +70,65 @@ def get_cursor():
     finally:
         cursor.close()
 
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def download_image_from_url(url, product_id):
+    """Download image from URL and save it locally"""
+    try:
+        # Validate URL
+        parsed_url = urlparse(url)
+        if not parsed_url.scheme in ['http', 'https']:
+            return None
+        
+        # Get file extension from URL
+        path = parsed_url.path
+        ext = path.rsplit('.', 1)[-1].lower() if '.' in path else 'jpg'
+        if ext not in ALLOWED_EXTENSIONS:
+            ext = 'jpg'
+        
+        # Generate unique filename
+        filename = f"product_{product_id}_{uuid.uuid4().hex[:8]}.{ext}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
+        # Download and save image
+        urllib.request.urlretrieve(url, filepath)
+        
+        return f"uploads/{filename}"
+    except Exception as e:
+        print(f"Error downloading image from URL: {e}")
+        return None
+
+def save_uploaded_file(file, product_id):
+    """Save uploaded file to the uploads folder"""
+    if file and file.filename != '' and allowed_file(file.filename):
+        # Generate secure filename with unique identifier
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        filename = f"product_{product_id}_{uuid.uuid4().hex[:8]}.{ext}"
+        filename = secure_filename(filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
+        # Ensure upload directory exists
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        
+        # Save file
+        file.save(filepath)
+        return f"uploads/{filename}"
+    return None
+
+def hash_password(password):
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+def check_password(hashed_password, user_password):
+    if isinstance(hashed_password, str):
+        hashed_password = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(user_password.encode('utf-8'), hashed_password)
+
 def init_db():
     """Initialize the database with required tables and sample data"""
     conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row  # Add this line for dictionary access
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
     # Create users table
@@ -106,7 +192,7 @@ def init_db():
     # Check if products table is empty and insert sample data
     cursor.execute("SELECT COUNT(*) as count FROM products")
     result = cursor.fetchone()
-    if result['count'] == 0:  # Now we can use dictionary access here too!
+    if result[0] == 0:
         # Insert sample products
         sample_products = [
             ('Laptop', 'High-performance laptop with 16GB RAM and 512GB SSD', 999.99, 10, 'Electronics', None),
@@ -125,14 +211,6 @@ def init_db():
     conn.commit()
     conn.close()
     print("Database initialized successfully!")
-    
-def hash_password(password):
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-
-def check_password(hashed_password, user_password):
-    if isinstance(hashed_password, str):
-        hashed_password = hashed_password.encode('utf-8')
-    return bcrypt.checkpw(user_password.encode('utf-8'), hashed_password)
 
 @app.route("/")
 def home():
@@ -211,6 +289,7 @@ def login():
     # GET request - show login form
     next_page = request.args.get('next', '')
     return render_template('login.html', next=next_page)
+
 @app.route('/logout')
 def logout():
     session.clear()
@@ -236,7 +315,7 @@ def product_detail(product_id):
 
 @app.route('/add_to_cart', methods=['POST'])
 def add_to_cart():
-
+    # No login required to add to cart
     product_id = request.form['product_id']
     quantity = int(request.form.get('quantity', 1))
     
@@ -255,7 +334,7 @@ def add_to_cart():
     except Exception as e:
         flash(f"Error: {str(e)}", 'danger')
         return redirect(request.referrer or url_for('home'))
-    
+
 @app.route("/cart")
 def view_cart():
     if "cart" not in session or not session["cart"]:
@@ -297,15 +376,52 @@ def view_cart():
         flash(f"Error loading cart: {str(e)}", "danger")
         return render_template("cart.html", cart_items=[], total=0)
 
-@app.route("/checkout", methods=['POST'])
+@app.route("/checkout", methods=['GET', 'POST'])
 def checkout():
+    # Only require login when actually trying to checkout
     if "user_id" not in session:
-        flash('Please log in first', 'warning')
+        flash('Please log in to complete your purchase', 'warning')
         return redirect(url_for('login'))
     
     if request.method == 'GET':
-        return render_template('checkout.html')
-
+        # Show checkout page for logged-in users
+        if "cart" not in session or not session["cart"]:
+            flash("Your cart is empty", 'warning')
+            return redirect(url_for("view_cart"))
+        
+        # Calculate total for display
+        cart = session["cart"]
+        product_ids = list(cart.keys())
+        
+        if not product_ids:
+            return redirect(url_for("view_cart"))
+        
+        placeholders = ','.join(['?'] * len(product_ids))
+        
+        with get_cursor() as cur:
+            cur.execute(
+                f"SELECT * FROM products WHERE product_id IN ({placeholders})",
+                product_ids
+            )
+            products = cur.fetchall()
+        
+        cart_items = []
+        total = 0
+        
+        for product in products:
+            pid = str(product["product_id"])
+            qty = cart[pid]  
+            item_total = product["price"] * qty
+            cart_items.append({
+                "product": product,
+                "quantity": qty,
+                "total": item_total
+            })      
+            total += item_total
+        
+        return render_template('checkout.html', cart_items=cart_items, total=total)
+    
+    # POST request - process the actual checkout
     if "cart" not in session or not session["cart"]:
         flash("Your cart is empty", 'warning')
         return redirect(url_for("view_cart"))
@@ -418,15 +534,44 @@ def add_product():
         price = float(request.form['price'])
         stock = int(request.form['stock'])
         category = request.form['category']
+        image_url = request.form.get('image_url', '').strip()
+        
+        image_path = None
         
         try:
+            # Handle image upload or URL
+            if 'image_file' in request.files:
+                file = request.files['image_file']
+                if file and file.filename != '':
+                    # Generate a temporary product_id for the filename
+                    with get_cursor() as cur:
+                        cur.execute("SELECT COALESCE(MAX(product_id), 0) + 1 as next_id FROM products")
+                        next_id = cur.fetchone()['next_id']
+                    
+                    image_path = save_uploaded_file(file, next_id)
+                    if image_path:
+                        flash('Image uploaded successfully!', 'success')
+            
+            # If no file uploaded but URL provided
+            if not image_path and image_url:
+                with get_cursor() as cur:
+                    cur.execute("SELECT COALESCE(MAX(product_id), 0) + 1 as next_id FROM products")
+                    next_id = cur.fetchone()['next_id']
+                
+                image_path = download_image_from_url(image_url, next_id)
+                if image_path:
+                    flash('Image downloaded from URL successfully!', 'success')
+                else:
+                    flash('Failed to download image from URL', 'warning')
+            
             with get_cursor() as cur:
                 cur.execute(
                     """INSERT INTO products 
-                    (name, description, price, stock_quantity, category)
-                    VALUES (?, ?, ?, ?, ?)""",
-                    (name, description, price, stock, category)
+                    (name, description, price, stock_quantity, category, image_url)
+                    VALUES (?, ?, ?, ?, ?, ?)""",
+                    (name, description, price, stock, category, image_path)
                 )
+            
             flash('Product added successfully!', 'success')
             return redirect(url_for('admin_products'))
         except Exception as e:
@@ -449,12 +594,43 @@ def edit_product(product_id):
                 price = float(request.form['price'])
                 stock = int(request.form['stock'])
                 category = request.form['category']
+                image_url = request.form.get('image_url', '').strip()
+                
+                # Get current product data
+                cur.execute("SELECT image_url FROM products WHERE product_id = ?", (product_id,))
+                current_product = cur.fetchone()
+                current_image = current_product['image_url'] if current_product else None
+                
+                image_path = current_image  # Keep current image by default
+                
+                # Handle image upload
+                if 'image_file' in request.files:
+                    file = request.files['image_file']
+                    if file and file.filename != '':
+                        new_image_path = save_uploaded_file(file, product_id)
+                        if new_image_path:
+                            image_path = new_image_path
+                            flash('New image uploaded successfully!', 'success')
+                
+                # Handle image URL
+                if not image_path and image_url:
+                    new_image_path = download_image_from_url(image_url, product_id)
+                    if new_image_path:
+                        image_path = new_image_path
+                        flash('New image downloaded from URL successfully!', 'success')
+                    else:
+                        flash('Failed to download image from URL', 'warning')
+                
+                # If "remove image" is checked, set image_path to None
+                if request.form.get('remove_image'):
+                    image_path = None
+                    flash('Image removed successfully!', 'success')
                 
                 cur.execute(
                     """UPDATE products 
-                    SET name=?, description=?, price=?, stock_quantity=?, category=?
+                    SET name=?, description=?, price=?, stock_quantity=?, category=?, image_url=?
                     WHERE product_id=?""",
-                    (name, description, price, stock, category, product_id)
+                    (name, description, price, stock, category, image_path, product_id)
                 )
                 flash('Product updated successfully!', 'success')
                 return redirect(url_for('admin_products'))
@@ -504,5 +680,10 @@ if __name__ == '__main__':
     else:
         # Always ensure tables exist
         init_db()
+    
+    # Ensure upload folder exists
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER)
+        print(f"Upload folder created: {UPLOAD_FOLDER}")
     
     app.run(debug=True)
