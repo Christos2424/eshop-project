@@ -3,11 +3,325 @@
 {% block title %}Your Cart - eShop{% endblock %}
 
 {% block content %}
-    <h1>Your Shopping Cart</h1>
+<style>
+/* Cart Page Specific Styles */
+.cart-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.cart-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.cart-header h1 {
+    color: var(--text-dark);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.cart-content {
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.cart-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.cart-table th {
+    background: #f8fafc;
+    padding: 20px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-dark);
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.cart-table td {
+    padding: 20px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: middle;
+}
+
+.cart-product-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.cart-product-image {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 2px solid #f1f5f9;
+}
+
+.cart-product-details {
+    flex: 1;
+}
+
+.cart-product-name {
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 4px;
+}
+
+.cart-product-category {
+    color: var(--text-light);
+    font-size: 0.9rem;
+}
+
+.quantity-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.quantity-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #d1d5db;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.quantity-btn:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.quantity-input {
+    width: 60px;
+    height: 32px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.item-price {
+    font-weight: 600;
+    color: var(--text-dark);
+    font-size: 1.1rem;
+}
+
+.item-total {
+    font-weight: 700;
+    color: var(--primary-color);
+    font-size: 1.2rem;
+}
+
+.remove-form {
+    margin: 0;
+}
+
+.cart-summary {
+    padding: 30px;
+    background: #f8fafc;
+    border-top: 2px solid #e2e8f0;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 8px 0;
+}
+
+.summary-row:last-child {
+    border-top: 2px solid #e2e8f0;
+    margin-top: 12px;
+    padding-top: 16px;
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--primary-color);
+}
+
+.cart-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 30px;
+    padding-top: 30px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.cart-action-left {
+    flex: 1;
+}
+
+.cart-action-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 16px;
+}
+
+.checkout-login-prompt {
+    text-align: center;
+    padding: 20px;
+    background: #f0f7ff;
+    border-radius: var(--radius);
+    border: 1px solid #bfdbfe;
+}
+
+.checkout-login-prompt p {
+    margin-bottom: 12px;
+    color: var(--text-dark);
+}
+
+.register-prompt {
+    font-size: 0.9rem;
+    color: var(--text-light);
+    margin-top: 8px;
+}
+
+.register-prompt a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.register-prompt a:hover {
+    text-decoration: underline;
+}
+
+.cart-promo {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.promo-code {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.promo-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid #d1fae5;
+    border-radius: var(--radius);
+    font-size: 1rem;
+}
+
+.promo-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.empty-cart-state {
+    text-align: center;
+    padding: 60px 40px;
+    color: var(--text-light);
+}
+
+.empty-cart-state i {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    color: #cbd5e1;
+}
+
+.empty-cart-state h3 {
+    margin: 0 0 12px 0;
+    color: var(--text-dark);
+    font-size: 1.5rem;
+}
+
+.empty-cart-state p {
+    margin: 0 0 24px 0;
+    font-size: 1rem;
+}
+
+@media (max-width: 768px) {
+    .cart-page {
+        padding: 15px;
+    }
+    
+    .cart-table {
+        display: block;
+        overflow-x: auto;
+    }
+    
+    .cart-product-info {
+        flex-direction: column;
+        text-align: center;
+        gap: 12px;
+    }
+    
+    .cart-product-details {
+        text-align: center;
+    }
+    
+    .cart-actions {
+        flex-direction: column;
+        gap: 20px;
+        text-align: center;
+    }
+    
+    .cart-action-left, .cart-action-right {
+        width: 100%;
+        align-items: center;
+    }
+    
+    .promo-code {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 480px) {
+    .cart-table th,
+    .cart-table td {
+        padding: 12px 8px;
+        font-size: 0.9rem;
+    }
+    
+    .cart-product-image {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .quantity-input {
+        width: 50px;
+    }
+}
+</style>
+
+<div class="cart-page">
+    <div class="cart-header">
+        <h1><i class="fas fa-shopping-cart"></i> Your Shopping Cart</h1>
+    </div>
     
     {% if cart_items %}
-        <div class="cart-items">
-            <table>
+        <div class="cart-content">
+            <!-- Promo Code Section -->
+            <div class="cart-promo">
+                <h4><i class="fas fa-tag"></i> Have a promo code?</h4>
+                <div class="promo-code">
+                    <input type="text" class="promo-input" placeholder="Enter promo code">
+                    <button class="btn btn-outline">Apply</button>
+                </div>
+            </div>
+
+            <table class="cart-table">
                 <thead>
                     <tr>
                         <th>Product</th>
@@ -19,18 +333,42 @@
                 </thead>
                 <tbody>
                     {% for item in cart_items %}
+                        {% if item.product %}
                         <tr>
                             <td>
-                                <div class="cart-product">
-                                    <img src="{{ get_image_url(product.image_url) }}" alt="{{ product.name }}">
-                                    <span>{{ item.product.name }}</span>
+                                <div class="cart-product-info">
+                                    <img src="{{ get_image_url(item.product.image_url) }}" 
+                                         alt="{{ item.product.name }}" 
+                                         class="cart-product-image">
+                                    <div class="cart-product-details">
+                                        <div class="cart-product-name">{{ item.product.name }}</div>
+                                        <div class="cart-product-category">{{ item.product.category or 'General' }}</div>
+                                    </div>
                                 </div>
                             </td>
-                            <td>${{ "%.2f"|format(item.product.price) }}</td>
-                            <td>{{ item.quantity }}</td>
-                            <td>${{ "%.2f"|format(item.total) }}</td>
+                            <td class="item-price">${{ "%.2f"|format(item.product.price) }}</td>
                             <td>
-                                <form action="{{ url_for('remove_from_cart') }}" method="post">
+                                <div class="quantity-controls">
+                                    <form action="{{ url_for('update_cart') }}" method="post" style="display: inline;">
+                                        <input type="hidden" name="product_id" value="{{ item.product.product_id }}">
+                                        <input type="hidden" name="quantity" value="{{ item.quantity - 1 }}">
+                                        <button type="submit" class="quantity-btn" {{ 'disabled' if item.quantity <= 1 }}>
+                                            <i class="fas fa-minus"></i>
+                                        </button>
+                                    </form>
+                                    <span class="quantity-display">{{ item.quantity }}</span>
+                                    <form action="{{ url_for('update_cart') }}" method="post" style="display: inline;">
+                                        <input type="hidden" name="product_id" value="{{ item.product.product_id }}">
+                                        <input type="hidden" name="quantity" value="{{ item.quantity + 1 }}">
+                                        <button type="submit" class="quantity-btn" {{ 'disabled' if item.quantity >= item.product.stock_quantity }}>
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                            <td class="item-total">${{ "%.2f"|format(item.total) }}</td>
+                            <td>
+                                <form action="{{ url_for('remove_from_cart') }}" method="post" class="remove-form">
                                     <input type="hidden" name="product_id" value="{{ item.product.product_id }}">
                                     <button type="submit" class="btn btn-sm btn-danger">
                                         <i class="fas fa-trash"></i> Remove
@@ -38,15 +376,29 @@
                                 </form>
                             </td>
                         </tr>
+                        {% endif %}
                     {% endfor %}
                 </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="3" class="text-right"><strong>Grand Total:</strong></td>
-                        <td colspan="2"><strong>${{ "%.2f"|format(total) }}</strong></td>
-                    </tr>
-                </tfoot>
             </table>
+            
+            <div class="cart-summary">
+                <div class="summary-row">
+                    <span>Subtotal:</span>
+                    <span>${{ "%.2f"|format(total) }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Shipping:</span>
+                    <span>${{ "0.00" if total >= 50 else "9.99" }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Tax:</span>
+                    <span>${{ "%.2f"|format(total * 0.08) }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Grand Total:</span>
+                    <span>${{ "%.2f"|format(total + (0 if total >= 50 else 9.99) + (total * 0.08)) }}</span>
+                </div>
+            </div>
             
             <div class="cart-actions">
                 <div class="cart-action-left">
@@ -77,7 +429,7 @@
             </div>
         </div>
     {% else %}
-        <div class="empty-cart">
+        <div class="empty-cart-state">
             <i class="fas fa-shopping-cart"></i>
             <h3>Your cart is empty</h3>
             <p>Browse our products and add some items to your cart!</p>
@@ -86,4 +438,5 @@
             </a>
         </div>
     {% endif %}
+</div>
 {% endblock %}

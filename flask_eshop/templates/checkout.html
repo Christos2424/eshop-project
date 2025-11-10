@@ -3,30 +3,508 @@
 {% block title %}Checkout - eShop{% endblock %}
 
 {% block content %}
-    <h1>Checkout</h1>
+<style>
+/* Checkout Page Specific Styles */
+.checkout-page {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.checkout-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.checkout-header h1 {
+    color: var(--text-dark);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.checkout-layout {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 40px;
+}
+
+.checkout-form-section {
+    background: white;
+    padding: 30px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.checkout-summary-section {
+    background: white;
+    padding: 30px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    height: fit-content;
+    position: sticky;
+    top: 100px;
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #f1f5f9;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-section {
+    margin-bottom: 32px;
+}
+
+.form-section:last-child {
+    margin-bottom: 0;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: var(--radius);
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.payment-methods {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.payment-method {
+    position: relative;
+}
+
+.payment-method input {
+    position: absolute;
+    opacity: 0;
+}
+
+.payment-method label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.payment-method input:checked + label {
+    border-color: var(--primary-color);
+    background: #f0f7ff;
+}
+
+.payment-method i {
+    font-size: 1.5rem;
+    color: var(--text-light);
+}
+
+.payment-method input:checked + label i {
+    color: var(--primary-color);
+}
+
+.order-items {
+    margin-bottom: 24px;
+}
+
+.order-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.order-item:last-child {
+    border-bottom: none;
+}
+
+.order-item-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.order-item-image {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 6px;
+}
+
+.order-item-details {
+    flex: 1;
+}
+
+.order-item-name {
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 4px;
+}
+
+.order-item-quantity {
+    color: var(--text-light);
+    font-size: 0.9rem;
+}
+
+.order-item-price {
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.order-totals {
+    border-top: 2px solid #e2e8f0;
+    padding-top: 20px;
+}
+
+.total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 8px 0;
+}
+
+.total-row:last-child {
+    border-top: 2px solid #e2e8f0;
+    margin-top: 12px;
+    padding-top: 16px;
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--primary-color);
+}
+
+.security-features {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-top: 24px;
+}
+
+.security-features h4 {
+    margin-bottom: 12px;
+    color: #059669;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.security-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.security-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #065f46;
+    font-size: 0.9rem;
+}
+
+.security-item i {
+    color: #059669;
+}
+
+.checkout-actions {
+    display: flex;
+    gap: 16px;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.btn-checkout {
+    flex: 1;
+    padding: 16px 24px;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.empty-checkout {
+    text-align: center;
+    padding: 60px 40px;
+    color: var(--text-light);
+}
+
+.empty-checkout i {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    color: #cbd5e1;
+}
+
+.empty-checkout h3 {
+    margin: 0 0 12px 0;
+    color: var(--text-dark);
+    font-size: 1.5rem;
+}
+
+.empty-checkout p {
+    margin: 0 0 24px 0;
+    font-size: 1rem;
+}
+
+@media (max-width: 968px) {
+    .checkout-layout {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
     
-    <div class="checkout-summary">
-        <h2>Order Summary</h2>
-        {% if cart_items %}
-            <div class="order-items">
-                {% for item in cart_items %}
-                    <div class="order-item">
-                        <span>{{ item.product.name }} x {{ item.quantity }}</span>
-                        <span>${{ "%.2f"|format(item.total) }}</span>
-                    </div>
-                {% endfor %}
-            </div>
-            <div class="order-total">
-                <strong>Total: ${{ "%.2f"|format(total) }}</strong>
-            </div>
-            
-            <form action="{{ url_for('checkout') }}" method="POST">
-                <button type="submit" class="btn btn-primary">Place Order</button>
-                <a href="{{ url_for('view_cart') }}" class="btn">Back to Cart</a>
-            </form>
-        {% else %}
-            <p>Your cart is empty</p>
-            <a href="{{ url_for('home') }}" class="btn">Continue Shopping</a>
-        {% endif %}
+    .checkout-summary-section {
+        position: static;
+        order: -1;
+    }
+}
+
+@media (max-width: 768px) {
+    .checkout-page {
+        padding: 15px;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .payment-methods {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .checkout-actions {
+        flex-direction: column;
+    }
+    
+    .checkout-form-section,
+    .checkout-summary-section {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .payment-methods {
+        grid-template-columns: 1fr;
+    }
+    
+    .order-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .order-item-price {
+        align-self: flex-end;
+    }
+}
+</style>
+
+<div class="checkout-page">
+    <div class="checkout-header">
+        <h1><i class="fas fa-credit-card"></i> Checkout</h1>
     </div>
+    
+    {% if cart_items %}
+        <div class="checkout-layout">
+            <!-- Checkout Form -->
+            <div class="checkout-form-section">
+                <h2 class="section-title"><i class="fas fa-shipping-fast"></i> Shipping Information</h2>
+                
+                <form action="{{ url_for('checkout') }}" method="POST">
+                    <div class="form-section">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="firstName">First Name *</label>
+                                <input type="text" id="firstName" name="firstName" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="lastName">Last Name *</label>
+                                <input type="text" id="lastName" name="lastName" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="email">Email Address *</label>
+                            <input type="email" id="email" name="email" value="{{ session.get('email', '') }}" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="address">Street Address *</label>
+                            <input type="text" id="address" name="address" required>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="city">City *</label>
+                                <input type="text" id="city" name="city" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="zipCode">ZIP Code *</label>
+                                <input type="text" id="zipCode" name="zipCode" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="country">Country *</label>
+                            <select id="country" name="country" required>
+                                <option value="">Select Country</option>
+                                <option value="US">United States</option>
+                                <option value="CA">Canada</option>
+                                <option value="UK">United Kingdom</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <h2 class="section-title"><i class="fas fa-credit-card"></i> Payment Method</h2>
+                    
+                    <div class="form-section">
+                        <div class="payment-methods">
+                            <div class="payment-method">
+                                <input type="radio" id="creditCard" name="paymentMethod" value="credit" checked>
+                                <label for="creditCard">
+                                    <i class="fas fa-credit-card"></i>
+                                    <span>Credit Card</span>
+                                </label>
+                            </div>
+                            <div class="payment-method">
+                                <input type="radio" id="paypal" name="paymentMethod" value="paypal">
+                                <label for="paypal">
+                                    <i class="fab fa-paypal"></i>
+                                    <span>PayPal</span>
+                                </label>
+                            </div>
+                            <div class="payment-method">
+                                <input type="radio" id="applePay" name="paymentMethod" value="applepay">
+                                <label for="applePay">
+                                    <i class="fab fa-apple-pay"></i>
+                                    <span>Apple Pay</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="checkout-actions">
+                        <button type="submit" class="btn btn-primary btn-checkout">
+                            <i class="fas fa-lock"></i> Place Order
+                        </button>
+                        <a href="{{ url_for('view_cart') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Cart
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Order Summary -->
+            <div class="checkout-summary-section">
+                <h2 class="section-title"><i class="fas fa-receipt"></i> Order Summary</h2>
+                
+                <div class="order-items">
+                    {% for item in cart_items %}
+                    <div class="order-item">
+                        <div class="order-item-info">
+                            <img src="{{ get_image_url(item.product.image_url) }}" 
+                                 alt="{{ item.product.name }}" 
+                                 class="order-item-image">
+                            <div class="order-item-details">
+                                <div class="order-item-name">{{ item.product.name }}</div>
+                                <div class="order-item-quantity">Qty: {{ item.quantity }}</div>
+                            </div>
+                        </div>
+                        <div class="order-item-price">${{ "%.2f"|format(item.total) }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="order-totals">
+                    <div class="total-row">
+                        <span>Subtotal:</span>
+                        <span>${{ "%.2f"|format(total) }}</span>
+                    </div>
+                    <div class="total-row">
+                        <span>Shipping:</span>
+                        <span>${{ "0.00" if total >= 50 else "9.99" }}</span>
+                    </div>
+                    <div class="total-row">
+                        <span>Tax:</span>
+                        <span>${{ "%.2f"|format(total * 0.08) }}</span>
+                    </div>
+                    <div class="total-row">
+                        <span>Total:</span>
+                        <span>${{ "%.2f"|format(total + (0 if total >= 50 else 9.99) + (total * 0.08)) }}</span>
+                    </div>
+                </div>
+
+                <div class="security-features">
+                    <h4><i class="fas fa-shield-alt"></i> Secure Checkout</h4>
+                    <div class="security-list">
+                        <div class="security-item">
+                            <i class="fas fa-lock"></i>
+                            <span>256-bit SSL encryption</span>
+                        </div>
+                        <div class="security-item">
+                            <i class="fas fa-shield-check"></i>
+                            <span>PCI DSS compliant</span>
+                        </div>
+                        <div class="security-item">
+                            <i class="fas fa-user-shield"></i>
+                            <span>Your data is protected</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="empty-checkout">
+            <i class="fas fa-shopping-cart"></i>
+            <h3>Your cart is empty</h3>
+            <p>Add some items to your cart before checking out</p>
+            <a href="{{ url_for('home') }}" class="btn btn-primary">
+                <i class="fas fa-shopping-bag"></i> Continue Shopping
+            </a>
+        </div>
+    {% endif %}
+</div>
 {% endblock %}
