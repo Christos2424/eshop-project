@@ -1,48 +1,793 @@
 {% extends "base.html" %}
 
-{% block title %}Manage Products - eShop{% endblock %}
+{% block title %}Manage Products - eShop Admin{% endblock %}
 
 {% block content %}
-    <h1>Product Management</h1>
+<style>
+
+/* Admin Products Page Specific Styles */
+.admin-products-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+    padding: 30px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    color: white;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+}
+
+.header-content h1 {
+    margin: 0 0 8px 0;
+    font-size: 2rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-content p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 1.1rem;
+}
+
+.header-actions .btn-primary {
+    background: rgba(255,255,255,0.2);
+    border: 2px solid rgba(255,255,255,0.3);
+    padding: 12px 24px;
+    font-weight: 600;
+    backdrop-filter: blur(10px);
+}
+
+.header-actions .btn-primary:hover {
+    background: rgba(255,255,255,0.3);
+    transform: translateY(-2px);
+}
+
+.admin-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-item {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stat-item:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #667eea;
+    margin-bottom: 8px;
+}
+
+.stat-label {
+    color: #666;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.table-section {
+    margin-bottom: 40px;
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.table-container {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.data-table thead {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.data-table th {
+    padding: 20px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: none;
+}
+
+/* Column Widths */
+.id-col { width: 80px; }
+.image-col { width: 100px; }
+.name-col { min-width: 250px; }
+.price-col, .amount-col { width: 120px; }
+.stock-col { width: 140px; }
+.category-col { width: 150px; }
+.status-col { width: 120px; }
+.date-col { width: 150px; }
+.customer-col { min-width: 200px; }
+.actions-col { width: 150px; }
+
+.data-row {
+    border-bottom: 1px solid #f1f5f9;
+    transition: all 0.3s ease;
+}
+
+.data-row:hover {
+    background: #f8fafc;
+    transform: scale(1.002);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+}
+
+.data-row td {
+    padding: 20px 16px;
+    vertical-align: middle;
+    border: none;
+}
+
+.clickable-row {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.clickable-row:hover {
+    background: #f0f7ff !important;
+    transform: scale(1.002);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.1);
+}
+
+.id-cell {
+    text-align: center;
+}
+
+.id-badge {
+    display: inline-block;
+    padding: 6px 10px;
+    background: #e2e8f0;
+    color: #4a5568;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+
+.image-cell {
+    width: 100px;
+}
+
+.image-wrapper {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin: 0 auto;
+}
+
+.table-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.data-row:hover .table-image {
+    transform: scale(1.1);
+}
+
+.status-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    padding: 3px 6px;
+    border-radius: 6px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    z-index: 2;
+}
+
+.status-badge.out-of-stock {
+    background: #ef4444;
+}
+
+.status-badge.low-stock {
+    background: #f59e0b;
+}
+
+.name-cell {
+    min-width: 250px;
+}
+
+.product-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.product-name {
+    font-weight: 600;
+    color: #1a202c;
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+.product-description {
+    color: #718096;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.customer-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.customer-name {
+    font-weight: 600;
+    color: #1a202c;
+    font-size: 0.95rem;
+}
+
+.customer-email {
+    color: #718096;
+    font-size: 0.8rem;
+}
+
+.price-cell, .amount-cell {
+    width: 120px;
+}
+
+.price, .amount {
+    font-weight: 700;
+    color: #059669;
+    font-size: 1.1rem;
+}
+
+.stock-cell {
+    width: 140px;
+}
+
+.stock-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.stock-quantity {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #059669;
+}
+
+.stock-quantity.low-stock {
+    color: #f59e0b;
+}
+
+.stock-quantity.out-of-stock {
+    color: #ef4444;
+}
+
+.stock-bar {
+    width: 100%;
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.stock-fill {
+    height: 100%;
+    background: #059669;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.stock-fill.low {
+    background: #f59e0b;
+}
+
+.stock-fill.out {
+    background: #ef4444;
+}
+
+.category-cell {
+    width: 150px;
+}
+
+.category-tag {
+    display: inline-block;
+    padding: 6px 12px;
+    background: #e2e8f0;
+    color: #4a5568;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.status-cell {
+    width: 120px;
+}
+
+.status-badge.status-pending {
+    background: #f59e0b;
+    color: white;
+}
+
+.status-badge.status-paid {
+    background: #3b82f6;
+    color: white;
+}
+
+.status-badge.status-shipped {
+    background: #10b981;
+    color: white;
+}
+
+.status-badge.status-cancelled {
+    background: #6b7280;
+    color: white;
+}
+
+.date-cell {
+    width: 150px;
+}
+
+.date {
+    color: #718096;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.actions-cell {
+    width: 150px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-start;
+}
+
+.btn-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.btn-edit {
+    background: #3b82f6;
+}
+
+.btn-edit:hover {
+    background: #2563eb;
+}
+
+.btn-delete {
+    background: #ef4444;
+}
+
+.btn-delete:hover {
+    background: #dc2626;
+}
+
+.btn-view {
+    background: #10b981;
+}
+
+.btn-view:hover {
+    background: #059669;
+}
+
+.btn-process {
+    background: #3b82f6;
+}
+
+.btn-process:hover {
+    background: #2563eb;
+}
+
+.btn-ship {
+    background: #10b981;
+}
+
+.btn-ship:hover {
+    background: #059669;
+}
+
+.btn-cancel {
+    background: #6b7280;
+}
+
+.btn-cancel:hover {
+    background: #4b5563;
+}
+
+.action-form {
+    display: inline;
+}
+
+.empty-row td {
+    padding: 60px 20px;
+}
+
+.empty-state {
+    text-align: center;
+    color: #718096;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    color: #cbd5e0;
+}
+
+.empty-state h3 {
+    margin: 0 0 12px 0;
+    color: #4a5568;
+    font-size: 1.5rem;
+}
+
+.empty-state p {
+    margin: 0 0 24px 0;
+    font-size: 1rem;
+}
+
+@media (max-width: 1024px) {
+    .admin-products-container {
+        padding: 15px;
+    }
     
-    <div class="admin-actions">
-        <a href="{{ url_for('add_product') }}" class="btn">Add New Product</a>
+    .admin-header {
+        flex-direction: column;
+        gap: 20px;
+        text-align: center;
+        padding: 24px;
+    }
+    
+    .admin-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    .data-table {
+        min-width: 1000px;
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-stats {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .stat-item {
+        padding: 20px;
+    }
+    
+    .header-content h1 {
+        font-size: 1.5rem;
+    }
+    
+    .section-title {
+        font-size: 1.25rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-products-container {
+        padding: 10px;
+    }
+    
+    .admin-header {
+        padding: 20px;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .btn-action {
+        width: 32px;
+        height: 32px;
+    }
+}
+</style>
+
+<div class="admin-products-container">
+    <div class="admin-header">
+        <div class="header-content">
+            <h1><i class="fas fa-boxes"></i> Admin Dashboard</h1>
+            <p>Manage your store's products and orders</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('add_product') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add New Product
+            </a>
+        </div>
     </div>
-    
-    <div class="products-list">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Price</th>
-                    <th>Stock</th>
-                    <th>Category</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for product in products %}
+
+    <div class="admin-stats">
+        <div class="stat-item">
+            <div class="stat-number">{{ products|length }}</div>
+            <div class="stat-label">Total Products</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{ products|selectattr('stock_quantity', 'gt', 0)|list|length }}</div>
+            <div class="stat-label">In Stock</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{ products|selectattr('stock_quantity', 'eq', 0)|list|length }}</div>
+            <div class="stat-label">Out of Stock</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{ orders|length }}</div>
+            <div class="stat-label">Total Orders</div>
+        </div>
+    </div>
+
+    <!-- Products Table -->
+    <div class="table-section">
+        <h2 class="section-title">
+            <i class="fas fa-box"></i> Products Management
+        </h2>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
                     <tr>
-                        <td>{{ product.product_id }}</td>
-                        <td>{{ product.name }}</td>
-                        <td>${{ "%.2f"|format(product.price) }}</td>
-                        <td>{{ product.stock_quantity }}</td>
-                        <td>{{ product.category }}</td>
-                        <td>
-                            <a href="{{ url_for('edit_product', product_id=product.product_id) }}" class="btn btn-sm">Edit</a>
-                            <form action="{{ url_for('delete_product', product_id=product.product_id) }}" method="post" class="inline-form">
-                                <button type="submit" class="btn btn-sm btn-danger" 
-                                        onclick="return confirm('Are you sure?')">Delete</button>
-                            </form>
+                        <th class="id-col">ID</th>
+                        <th class="image-col">Image</th>
+                        <th class="name-col">Product</th>
+                        <th class="price-col">Price</th>
+                        <th class="stock-col">Stock</th>
+                        <th class="category-col">Category</th>
+                        <th class="actions-col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in products %}
+                    <tr class="data-row clickable-row" data-href="{{ url_for('product_detail', product_id=product.product_id) }}">
+                        <td class="id-cell">
+                            <span class="id-badge">#{{ product.product_id }}</span>
+                        </td>
+                        <td class="image-cell">
+                            <div class="image-wrapper">
+                                <img src="{{ get_image_url(product.image_url) }}" 
+                                     alt="{{ product.name }}" 
+                                     class="table-image">
+                                {% if product.stock_quantity == 0 %}
+                                <div class="status-badge out-of-stock">Out</div>
+                                {% elif product.stock_quantity < 10 %}
+                                <div class="status-badge low-stock">Low</div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="name-cell">
+                            <div class="product-info">
+                                <div class="product-name">{{ product.name }}</div>
+                                {% if product.description %}
+                                <div class="product-description">{{ product.description|truncate(60) }}</div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="price-cell">
+                            <span class="price">${{ "%.2f"|format(product.price) }}</span>
+                        </td>
+                        <td class="stock-cell">
+                            <div class="stock-info">
+                                <span class="stock-quantity {{ 'low-stock' if product.stock_quantity < 10 else '' }} {{ 'out-of-stock' if product.stock_quantity == 0 else '' }}">
+                                    {{ product.stock_quantity }}
+                                </span>
+                                <div class="stock-bar">
+                                    <div class="stock-fill {{ 'low' if product.stock_quantity < 10 else '' }} {{ 'out' if product.stock_quantity == 0 else '' }}" 
+                                         style="width: {{ (product.stock_quantity / 50 * 100) if product.stock_quantity <= 50 else 100 }}%">
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="category-cell">
+                            <span class="category-tag">{{ product.category or 'Uncategorized' }}</span>
+                        </td>
+                        <td class="actions-cell">
+                            <div class="action-buttons">
+                                <a href="{{ url_for('edit_product', product_id=product.product_id) }}" class="btn-action btn-edit" title="Edit Product">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form action="{{ url_for('delete_product', product_id=product.product_id) }}" method="post" class="action-form">
+                                    <button type="submit" class="btn-action btn-delete" title="Delete Product"
+                                            onclick="return confirm('Are you sure you want to delete {{ product.name }}?')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
-                {% else %}
-                    <tr>
-                        <td colspan="6">No products found</td>
+                    {% else %}
+                    <tr class="empty-row">
+                        <td colspan="7">
+                            <div class="empty-state">
+                                <i class="fas fa-box-open"></i>
+                                <h3>No Products Found</h3>
+                                <p>Get started by adding your first product</p>
+                                <a href="{{ url_for('add_product') }}" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Add Product
+                                </a>
+                            </div>
+                        </td>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
+
+    <!-- Orders Table -->
+    <div class="table-section">
+        <h2 class="section-title">
+            <i class="fas fa-shopping-cart"></i> Orders Management
+        </h2>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th class="id-col">Order_ID</th>
+                        <th class="customer-col">Customer</th>
+                        <th class="amount-col">Amount</th>
+                        <th class="status-col">Status</th>
+                        <th class="date-col">Date</th>
+                        <th class="actions-col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr class="data-row">
+                        <td class="id-cell">
+                            <span class="id-badge">#{{ order.order_id }}</span>
+                        </td>
+                        <td class="customer-cell">
+                            <div class="customer-info">
+                                <div class="customer-name">{{ order.username }}</div>
+                                <div class="customer-email">{{ order.email }}</div>
+                            </div>
+                        </td>
+                        <td class="amount-cell">
+                            <span class="amount">${{ "%.2f"|format(order.total) }}</span>
+                        </td>
+                        <td class="status-cell">
+                            <span class="status-badge status-{{ order.status }}">
+                                {{ order.status|title }}
+                            </span>
+                        </td>
+                        <td class="date-cell">
+                            <span class="date">{{ order.created_at[:16] }}</span>
+                        </td>
+                        <td class="actions-cell">
+                            <div class="action-buttons">
+                                <button class="btn-action btn-view" title="View Order Details" onclick="viewOrder({{ order.order_id }})">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                {% if order.status == 'pending' %}
+                                <button class="btn-action btn-process" title="Mark as Paid" onclick="updateOrderStatus({{ order.order_id }}, 'paid')">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                {% elif order.status == 'paid' %}
+                                <button class="btn-action btn-ship" title="Mark as Shipped" onclick="updateOrderStatus({{ order.order_id }}, 'shipped')">
+                                    <i class="fas fa-shipping-fast"></i>
+                                </button>
+                                {% endif %}
+                                {% if order.status != 'cancelled' %}
+                                <button class="btn-action btn-cancel" title="Cancel Order" onclick="updateOrderStatus({{ order.order_id }}, 'cancelled')">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr class="empty-row">
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <i class="fas fa-receipt"></i>
+                                <h3>No Orders Found</h3>
+                                <p>Orders will appear here when customers make purchases</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+// Make product rows clickable
+document.addEventListener('DOMContentLoaded', function() {
+    const clickableRows = document.querySelectorAll('.clickable-row');
+    
+    clickableRows.forEach(row => {
+        row.addEventListener('click', function(e) {
+            // Don't trigger if clicking on action buttons
+            if (e.target.closest('.action-buttons')) {
+                return;
+            }
+            window.location.href = this.dataset.href;
+        });
+    });
+});
+
+function viewOrder(orderId) {
+    alert('View order details for order #' + orderId);
+    // In a real implementation, this would open a modal or redirect to order details
+}
+
+function updateOrderStatus(orderId, status) {
+    if (confirm('Are you sure you want to update order #' + orderId + ' to ' + status + '?')) {
+        // In a real implementation, this would make an AJAX call to update the order status
+        alert('Order #' + orderId + ' status updated to ' + status);
+        // You would typically reload the page or update the row dynamically
+        location.reload();
+    }
+}
+</script>
 {% endblock %}

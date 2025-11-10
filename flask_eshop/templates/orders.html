@@ -3,33 +3,407 @@
 {% block title %}My Orders - eShop{% endblock %}
 
 {% block content %}
-    <h1>My Orders</h1>
+<style>
+/* Orders Page Specific Styles */
+.orders-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.orders-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.orders-header h1 {
+    color: var(--text-dark);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.orders-container {
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.orders-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.orders-table th {
+    background: #f8fafc;
+    padding: 20px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-dark);
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.orders-table td {
+    padding: 20px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.order-id {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-family: 'Courier New', monospace;
+}
+
+.order-date {
+    color: var(--text-light);
+    font-size: 0.9rem;
+}
+
+.order-products {
+    max-width: 300px;
+}
+
+.order-product-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.order-product-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background: #f8fafc;
+    border-radius: 6px;
+}
+
+.order-product-image {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.order-product-name {
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: 0.9rem;
+}
+
+.order-product-quantity {
+    color: var(--text-light);
+    font-size: 0.8rem;
+    margin-left: auto;
+}
+
+.order-total {
+    font-weight: 700;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+}
+
+.order-status {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-paid {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-shipped {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-cancelled {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.order-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-order-action {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+}
+
+.empty-orders {
+    text-align: center;
+    padding: 60px 40px;
+    color: var(--text-light);
+}
+
+.empty-orders i {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    color: #cbd5e1;
+}
+
+.empty-orders h3 {
+    margin: 0 0 12px 0;
+    color: var(--text-dark);
+    font-size: 1.5rem;
+}
+
+.empty-orders p {
+    margin: 0 0 24px 0;
+    font-size: 1rem;
+}
+
+.orders-filter {
+    background: #f8fafc;
+    padding: 20px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.filter-options {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-group label {
+    font-weight: 600;
+    color: var(--text-dark);
+    font-size: 0.9rem;
+}
+
+.filter-select {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    font-size: 0.9rem;
+}
+
+.order-details-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.order-details-link:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+    .orders-page {
+        padding: 15px;
+    }
     
+    .orders-table {
+        display: block;
+        overflow-x: auto;
+    }
+    
+    .orders-table th,
+    .orders-table td {
+        padding: 12px 8px;
+        font-size: 0.9rem;
+    }
+    
+    .order-products {
+        max-width: 200px;
+    }
+    
+    .order-product-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 4px;
+    }
+    
+    .order-product-quantity {
+        margin-left: 0;
+    }
+    
+    .filter-options {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .order-actions {
+        flex-direction: column;
+    }
+    
+    .btn-order-action {
+        font-size: 0.7rem;
+        padding: 6px 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .orders-table {
+        font-size: 0.8rem;
+    }
+    
+    .order-status {
+        padding: 6px 12px;
+        font-size: 0.7rem;
+    }
+}
+</style>
+
+<div class="orders-page">
+    <div class="orders-header">
+        <h1><i class="fas fa-receipt"></i> My Orders</h1>
+    </div>
+
     {% if orders %}
-        <table class="orders-table">
-            <thead>
-                <tr>
-                    <th>Order ID</th>
-                    <th>Date</th>
-                    <th>Products</th>
-                    <th>Total</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for order in orders %}
+        <div class="orders-container">
+            <!-- Orders Filter -->
+            <div class="orders-filter">
+                <div class="filter-options">
+                    <div class="filter-group">
+                        <label for="statusFilter">Status:</label>
+                        <select id="statusFilter" class="filter-select">
+                            <option value="all">All Orders</option>
+                            <option value="pending">Pending</option>
+                            <option value="paid">Paid</option>
+                            <option value="shipped">Shipped</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="dateFilter">Date:</label>
+                        <select id="dateFilter" class="filter-select">
+                            <option value="all">All Time</option>
+                            <option value="30">Last 30 Days</option>
+                            <option value="90">Last 90 Days</option>
+                            <option value="365">Last Year</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <table class="orders-table">
+                <thead>
                     <tr>
-                        <td>#{{ order.order_id }}</td>
-                        <td>{{ order.created_at.strftime('%Y-%m-%d') }}</td>
-                        <td>{{ order.products|truncate(50) }}</td>
-                        <td>${{ order.total }}</td>
-                        <td class="status-{{ order.status }}">{{ order.status|capitalize }}</td>
+                        <th>Order ID</th>
+                        <th>Date</th>
+                        <th>Products</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Actions</th>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                        <tr>
+                            <td class="order-id">#{{ order.order_id }}</td>
+                            <td>
+                                <div class="order-date">{{ order.created_at[:16] }}</div>
+                            </td>
+                            <td class="order-products">
+                                <div class="order-product-list">
+                                    {% if order.product_names %}
+                                        {% for product_info in order.product_names.split(',') %}
+                                            <div class="order-product-item">
+                                                <span class="order-product-name">{{ product_info.split('(x')[0].strip() }}</span>
+                                                <span class="order-product-quantity">{{ product_info.split('(x')[1].replace(')', '').strip() if '(x' in product_info else 'x1' }}</span>
+                                            </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <span>No products</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="order-total">${{ "%.2f"|format(order.total) }}</td>
+                            <td>
+                                <span class="order-status status-{{ order.status }}">{{ order.status|title }}</span>
+                            </td>
+                            <td>
+                                <div class="order-actions">
+                                    <a href="#" class="btn btn-sm btn-outline btn-order-action">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    {% if order.status == 'shipped' %}
+                                    <a href="#" class="btn btn-sm btn-primary btn-order-action">
+                                        <i class="fas fa-truck"></i> Track
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     {% else %}
-        <p>You haven't placed any orders yet.</p>
-        <a href="{{ url_for('home') }}" class="btn">Browse Products</a>
+        <div class="empty-orders">
+            <i class="fas fa-receipt"></i>
+            <h3>No Orders Yet</h3>
+            <p>You haven't placed any orders yet. Start shopping to see your orders here!</p>
+            <a href="{{ url_for('home') }}" class="btn btn-primary">
+                <i class="fas fa-shopping-bag"></i> Start Shopping
+            </a>
+        </div>
     {% endif %}
+</div>
+
+<script>
+// Filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const statusFilter = document.getElementById('statusFilter');
+    const dateFilter = document.getElementById('dateFilter');
+    const orderRows = document.querySelectorAll('.orders-table tbody tr');
+    
+    function filterOrders() {
+        const statusValue = statusFilter.value;
+        const dateValue = dateFilter.value;
+        
+        orderRows.forEach(row => {
+            let showRow = true;
+            
+            // Status filter
+            if (statusValue !== 'all') {
+                const statusElement = row.querySelector('.order-status');
+                const rowStatus = statusElement.className.includes(statusValue);
+                if (!rowStatus) {
+                    showRow = false;
+                }
+            }
+            
+            // Date filter (simplified - in real app you'd compare dates)
+            if (dateValue !== 'all') {
+                // This would require actual date comparison in a real application
+                // For now, we'll just show all rows
+            }
+            
+            row.style.display = showRow ? '' : 'none';
+        });
+    }
+    
+    statusFilter.addEventListener('change', filterOrders);
+    dateFilter.addEventListener('change', filterOrders);
+});
+</script>
 {% endblock %}

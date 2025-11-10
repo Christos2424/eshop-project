@@ -7,10 +7,12 @@ from urllib.parse import urlparse
 from werkzeug.utils import secure_filename
 from contextlib import contextmanager
 import uuid
- 
- 
+import re
+from functools import wraps
+import time
+
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
 # Database configuration
 DATABASE = 'eshop.db'
@@ -22,6 +24,9 @@ MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
+
+# Rate limiting storage
+login_attempts = {}
 
 @app.context_processor
 def utility_processor():
@@ -37,6 +42,7 @@ def utility_processor():
         return image_url
     
     return dict(get_image_url=get_image_url)
+
 # Ensure upload directory exists when module is imported
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -102,20 +108,32 @@ def download_image_from_url(url, product_id):
 
 def save_uploaded_file(file, product_id):
     """Save uploaded file to the uploads folder"""
-    if file and file.filename != '' and allowed_file(file.filename):
-        # Generate secure filename with unique identifier
-        ext = file.filename.rsplit('.', 1)[1].lower()
-        filename = f"product_{product_id}_{uuid.uuid4().hex[:8]}.{ext}"
-        filename = secure_filename(filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        
-        # Ensure upload directory exists
-        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-        
-        # Save file
-        file.save(filepath)
-        return f"uploads/{filename}"
-    return None
+    try:
+        if file and file.filename != '' and allowed_file(file.filename):
+            # Check file size
+            file.seek(0, os.SEEK_END)
+            file_length = file.tell()
+            file.seek(0)
+            
+            if file_length > app.config['MAX_CONTENT_LENGTH']:
+                raise ValueError("File too large (max 16MB)")
+            
+            # Generate secure filename with unique identifier
+            ext = file.filename.rsplit('.', 1)[1].lower()
+            filename = f"product_{product_id}_{uuid.uuid4().hex[:8]}.{ext}"
+            filename = secure_filename(filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            
+            # Ensure upload directory exists
+            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+            
+            # Save file
+            file.save(filepath)
+            return f"uploads/{filename}"
+        return None
+    except Exception as e:
+        flash(f"Error processing image: {str(e)}", "danger")
+        return None
 
 def hash_password(password):
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
@@ -124,6 +142,96 @@ def check_password(hashed_password, user_password):
     if isinstance(hashed_password, str):
         hashed_password = hashed_password.encode('utf-8')
     return bcrypt.checkpw(user_password.encode('utf-8'), hashed_password)
+
+# Validation functions
+def validate_email(email):
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+def validate_password(password):
+    return len(password) >= 6
+
+def validate_product_data(data):
+    errors = []
+    
+    if len(data.get('name', '').strip()) < 2:
+        errors.append("Product name must be at least 2 characters")
+    
+    try:
+        price = float(data.get('price', 0))
+        if price <= 0:
+            errors.append("Price must be positive")
+    except (ValueError, TypeError):
+        errors.append("Price must be a valid number")
+    
+    try:
+        stock = int(data.get('stock', 0))
+        if stock < 0:
+            errors.append("Stock cannot be negative")
+    except (ValueError, TypeError):
+        errors.append("Stock must be a valid integer")
+    
+    if len(data.get('description', '').strip()) < 10:
+        errors.append("Description must be at least 10 characters")
+    
+    return errors
+
+def validate_user_data(data):
+    errors = []
+    
+    username = data.get('username', '').strip()
+    if len(username) < 3:
+        errors.append("Username must be at least 3 characters")
+    if not username.isalnum():
+        errors.append("Username can only contain letters and numbers")
+    
+    email = data.get('email', '').strip()
+    if not validate_email(email):
+        errors.append("Invalid email address")
+    
+    password = data.get('password', '')
+    if not validate_password(password):
+        errors.append("Password must be at least 6 characters")
+    
+    if password != data.get('confirm_password', ''):
+        errors.append("Passwords do not match")
+    
+    return errors
+
+# Decorators
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'role' not in session or session['role'] != 'admin':
+            flash('Admin access required', 'danger')
+            return redirect(url_for('home'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to access this page', 'warning')
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def rate_limit(key, max_attempts=5, window=900):  # 15 minutes
+    """Simple rate limiting"""
+    current_time = time.time()
+    if key not in login_attempts:
+        login_attempts[key] = []
+    
+    # Remove old attempts
+    login_attempts[key] = [attempt_time for attempt_time in login_attempts[key] 
+                          if current_time - attempt_time < window]
+    
+    if len(login_attempts[key]) >= max_attempts:
+        return False
+    
+    login_attempts[key].append(current_time)
+    return True
 
 def init_db():
     """Initialize the database with required tables and sample data"""
@@ -182,6 +290,14 @@ def init_db():
         )
     ''')
     
+    # Create indexes for better performance
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_products_category ON products(category)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_products_stock ON products(stock_quantity)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id)')
+    
     # Create admin user if it doesn't exist
     admin_password = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt())
     cursor.execute('''
@@ -214,15 +330,73 @@ def init_db():
 
 @app.route("/")
 def home():
+    page = request.args.get('page', 1, type=int)
+    search_query = request.args.get('q', '')
+    category = request.args.get('category', '')
+    per_page = 12
+    
     try:
         with get_cursor() as cur:
-            cur.execute("SELECT * FROM products WHERE stock_quantity > 0")
+            # Build query based on filters
+            query = "SELECT * FROM products WHERE stock_quantity > 0"
+            count_query = "SELECT COUNT(*) FROM products WHERE stock_quantity > 0"
+            params = []
+            
+            if search_query:
+                query += " AND (name LIKE ? OR description LIKE ?)"
+                count_query += " AND (name LIKE ? OR description LIKE ?)"
+                params.extend([f'%{search_query}%', f'%{search_query}%'])
+            
+            if category:
+                query += " AND category = ?"
+                count_query += " AND category = ?"
+                params.append(category)
+            
+            # Get total count
+            cur.execute(count_query, params)
+            total = cur.fetchone()[0]
+            
+            # Get products with pagination
+            query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+            params.extend([per_page, (page-1)*per_page])
+            cur.execute(query, params)
             products = cur.fetchall()
-        return render_template('index.html', products=products)
+            
+            # Get distinct categories for filter
+            cur.execute("SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != ''")
+            categories = [row[0] for row in cur.fetchall()]
+            
+        total_pages = (total + per_page - 1) // per_page
+        
+        return render_template('index.html', 
+                             products=products, 
+                             page=page, 
+                             per_page=per_page, 
+                             total=total,
+                             total_pages=total_pages,
+                             search_query=search_query,
+                             category=category,
+                             categories=categories)
     except Exception as e:
-        flash(f"Database error: {str(e)}", 'danger')
-        return render_template('index.html', products=[])
-    
+        flash(f"Error loading products: {str(e)}", 'danger')
+        return render_template('index.html', products=[], page=1, total=0, total_pages=0)
+
+@app.route('/search')
+def search():
+    query = request.args.get('q', '')
+    if query:
+        try:
+            with get_cursor() as cur:
+                cur.execute(
+                    "SELECT * FROM products WHERE name LIKE ? OR description LIKE ?",
+                    (f'%{query}%', f'%{query}%')
+                )
+                products = cur.fetchall()
+            return render_template('index.html', products=products, query=query)
+        except Exception as e:
+            flash(f"Search error: {str(e)}", 'danger')
+    return redirect(url_for('home'))
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -231,9 +405,12 @@ def register():
         password = request.form['password']
         confirm_password = request.form['confirm_password']
         
-        if password != confirm_password:
-            flash('Passwords do not match!', 'danger')
-            return redirect(url_for('register'))
+        # Validate user data
+        validation_errors = validate_user_data(request.form)
+        if validation_errors:
+            for error in validation_errors:
+                flash(error, 'danger')
+            return render_template('register.html')
         
         try:
             with get_cursor() as cur:
@@ -241,7 +418,12 @@ def register():
                 cur.execute('SELECT * FROM users WHERE email = ?', (email,))
                 if cur.fetchone():
                     flash('Email already registered!', 'danger')
-                    return redirect(url_for('register'))
+                    return render_template('register.html')
+                
+                cur.execute('SELECT * FROM users WHERE username = ?', (username,))
+                if cur.fetchone():
+                    flash('Username already taken!', 'danger')
+                    return render_template('register.html')
                 
                 hashed_pw = hash_password(password)
                 cur.execute(
@@ -253,8 +435,8 @@ def register():
             return redirect(url_for('login'))
         
         except Exception as e:
-            flash(f"Error: {str(e)}", 'danger')
-            return redirect(url_for('register'))
+            flash(f"Registration error: {str(e)}", 'danger')
+            return render_template('register.html')
     
     return render_template('register.html')
 
@@ -264,6 +446,11 @@ def login():
         email = request.form["email"]
         password = request.form["password"]
         next_page = request.form.get('next') or request.args.get('next')
+        
+        # Rate limiting
+        if not rate_limit(email):
+            flash('Too many login attempts. Please try again in 15 minutes.', 'danger')
+            return render_template('login.html')
         
         try:
             with get_cursor() as cur:
@@ -276,15 +463,19 @@ def login():
                 session["role"] = user['role']
                 flash('Login successful!', 'success')
                 
+                # Clear rate limiting for successful login
+                if email in login_attempts:
+                    del login_attempts[email]
+                
                 # Redirect to the requested page or home
                 return redirect(next_page or url_for('home'))
             else:
                 flash('Invalid email or password', 'danger')
-                return redirect(url_for('login'))
+                return render_template('login.html')
     
         except Exception as e:
-            flash(f"Database error: {str(e)}", 'danger')
-            return redirect(url_for("login"))
+            flash(f"Login error: {str(e)}", 'danger')
+            return render_template("login.html")
     
     # GET request - show login form
     next_page = request.args.get('next', '')
@@ -310,21 +501,46 @@ def product_detail(product_id):
         return render_template('product.html', product=product)
     
     except Exception as e:
-        flash(f"Error: {str(e)}", 'danger')
+        flash(f"Error loading product: {str(e)}", 'danger')
         return redirect(url_for('home'))
 
 @app.route('/add_to_cart', methods=['POST'])
 def add_to_cart():
     # No login required to add to cart
-    product_id = request.form['product_id']
+    product_id = request.form.get('product_id')
     quantity = int(request.form.get('quantity', 1))
     
+    if not product_id:
+        flash('Invalid product', 'danger')
+        return redirect(request.referrer or url_for('home'))
+    
     try:
+        # Validate product exists and has stock
+        with get_cursor() as cur:
+            cur.execute("SELECT product_id, name, stock_quantity FROM products WHERE product_id = ?", (product_id,))
+            product = cur.fetchone()
+            
+            if not product:
+                flash('Product not found', 'danger')
+                return redirect(request.referrer or url_for('home'))
+            
+            if product['stock_quantity'] < quantity:
+                flash(f"Only {product['stock_quantity']} units of {product['name']} available", 'warning')
+                return redirect(request.referrer or url_for('home'))
+        
         if 'cart' not in session:
             session["cart"] = {}
         
         cart = session['cart']
-        cart[str(product_id)] = cart.get(str(product_id), 0) + quantity
+        current_quantity = cart.get(str(product_id), 0)
+        new_quantity = current_quantity + quantity
+        
+        # Check total doesn't exceed stock
+        if new_quantity > product['stock_quantity']:
+            flash(f"Cannot add more than {product['stock_quantity']} units of {product['name']}", 'warning')
+            return redirect(request.referrer or url_for('home'))
+        
+        cart[str(product_id)] = new_quantity
         session["cart"] = cart
         session.modified = True
         
@@ -332,7 +548,7 @@ def add_to_cart():
         return redirect(request.referrer or url_for('home'))
         
     except Exception as e:
-        flash(f"Error: {str(e)}", 'danger')
+        flash(f"Error adding to cart: {str(e)}", 'danger')
         return redirect(request.referrer or url_for('home'))
 
 @app.route("/cart")
@@ -358,6 +574,7 @@ def view_cart():
         
         cart_items = []
         total = 0
+        items_to_remove = []
         
         for product in products:
             pid = str(product["product_id"])
@@ -370,19 +587,82 @@ def view_cart():
             })      
             total += item_total
         
+        # Remove any products from cart that weren't found in database
+        found_ids = [str(product["product_id"]) for product in products]
+        for pid in cart.keys():
+            if pid not in found_ids:
+                items_to_remove.append(pid)
+        
+        for pid in items_to_remove:
+            del cart[pid]
+        
+        if items_to_remove:
+            session["cart"] = cart
+            session.modified = True
+            flash("Some items in your cart are no longer available and have been removed.", "warning")
+        
         return render_template("cart.html", cart_items=cart_items, total=total)
     
     except Exception as e:
         flash(f"Error loading cart: {str(e)}", "danger")
+        # If there's an error, clear the cart to prevent further issues
+        session.pop('cart', None)
         return render_template("cart.html", cart_items=[], total=0)
 
-@app.route("/checkout", methods=['GET', 'POST'])
-def checkout():
-    # Only require login when actually trying to checkout
-    if "user_id" not in session:
-        flash('Please log in to complete your purchase', 'warning')
-        return redirect(url_for('login'))
+@app.route('/update_cart', methods=['POST'])
+def update_cart():
+    product_id = request.form.get('product_id')
+    quantity = request.form.get('quantity')
     
+    if not product_id or not quantity:
+        flash('Invalid request', 'danger')
+        return redirect(url_for('view_cart'))
+    
+    try:
+        quantity = int(quantity)
+        
+        if 'cart' in session and str(product_id) in session['cart']:
+            if quantity <= 0:
+                del session['cart'][str(product_id)]
+                flash('Item removed from cart', 'success')
+            else:
+                # Check stock availability
+                with get_cursor() as cur:
+                    cur.execute("SELECT stock_quantity FROM products WHERE product_id = ?", (product_id,))
+                    product = cur.fetchone()
+                    
+                    if product and quantity <= product['stock_quantity']:
+                        session['cart'][str(product_id)] = quantity
+                        flash('Cart updated successfully!', 'success')
+                    else:
+                        flash('Requested quantity not available', 'warning')
+            
+            session.modified = True
+        else:
+            flash('Item not found in cart', 'warning')
+    
+    except ValueError:
+        flash('Invalid quantity', 'danger')
+    except Exception as e:
+        flash(f"Error updating cart: {str(e)}", 'danger')
+    
+    return redirect(url_for('view_cart'))
+
+@app.route('/remove_from_cart', methods=['POST'])
+def remove_from_cart():
+    if 'cart' in session and 'product_id' in request.form:
+        product_id = request.form['product_id']
+        cart = session['cart']
+        if str(product_id) in cart:
+            del cart[str(product_id)]
+            session['cart'] = cart
+            session.modified = True
+            flash('Item removed from cart', 'success')
+    return redirect(url_for('view_cart'))
+
+@app.route("/checkout", methods=['GET', 'POST'])
+@login_required
+def checkout():
     if request.method == 'GET':
         # Show checkout page for logged-in users
         if "cart" not in session or not session["cart"]:
@@ -442,7 +722,7 @@ def checkout():
             cur = db.cursor()
             placeholders = ','.join(['?'] * len(product_ids))
             
-            # Get product details
+            # Get product details with row locking
             cur.execute(
                 f"SELECT product_id, price, stock_quantity, name FROM products WHERE product_id IN ({placeholders})",
                 product_ids
@@ -460,7 +740,7 @@ def checkout():
                     
                 product = products[pid]
                 if product['stock_quantity'] < qty:
-                    insufficient_stock.append(product['name'])
+                    insufficient_stock.append(f"{product['name']} (available: {product['stock_quantity']})")
                 total += product['price'] * qty
             
             if insufficient_stock:
@@ -497,7 +777,7 @@ def checkout():
             session.modified = True
             
             flash(f'Order #{order_id} placed successfully!', 'success')
-            return redirect(url_for('home'))
+            return redirect(url_for('user_orders'))
             
         except Exception as e:
             db.rollback()
@@ -507,28 +787,63 @@ def checkout():
         flash(f"Checkout failed: {str(e)}", 'danger')
         return redirect(url_for('view_cart'))
 
-@app.route('/admin/products')
-def admin_products():
-    if 'role' not in session or session['role'] != 'admin':
-        flash('Admin access required', 'danger')
-        return redirect(url_for('home'))
-    
+@app.route('/orders')
+@login_required
+def user_orders():
     try:
         with get_cursor() as cur:
-            cur.execute("SELECT * FROM products")
+            cur.execute("""
+                SELECT o.*, 
+                       GROUP_CONCAT(p.name || ' (x' || oi.quantity || ')') as product_names
+                FROM orders o
+                JOIN order_items oi ON o.order_id = oi.order_id
+                JOIN products p ON oi.product_id = p.product_id
+                WHERE o.user_id = ?
+                GROUP BY o.order_id
+                ORDER BY o.created_at DESC
+            """, (session['user_id'],))
+            orders = cur.fetchall()
+        
+        return render_template('orders.html', orders=orders)
+    except Exception as e:
+        flash(f"Error loading orders: {str(e)}", 'danger')
+        return render_template('orders.html', orders=[])
+
+@app.route('/admin/products')
+@admin_required
+def admin_products():
+    try:
+        with get_cursor() as cur:
+            # Fetch products
+            cur.execute("SELECT * FROM products ORDER BY created_at DESC")
             products = cur.fetchall()
-        return render_template('admin_products.html', products=products)
+            
+            # Fetch orders with user information
+            cur.execute("""
+                SELECT o.order_id, o.total, o.status, o.created_at, 
+                       u.username, u.email
+                FROM orders o
+                JOIN users u ON o.user_id = u.user_id
+                ORDER BY o.created_at DESC
+            """)
+            orders = cur.fetchall()
+            
+        return render_template('admin_products.html', products=products, orders=orders)
     except Exception as e:
         flash(f"Error: {str(e)}", 'danger')
         return redirect(url_for('home'))
 
 @app.route('/admin/add_product', methods=['GET', 'POST'])
+@admin_required
 def add_product():
-    if 'role' not in session or session['role'] != 'admin':
-        flash('Admin access required', 'danger')
-        return redirect(url_for('home'))
-    
     if request.method == 'POST':
+        # Validate product data
+        validation_errors = validate_product_data(request.form)
+        if validation_errors:
+            for error in validation_errors:
+                flash(error, 'danger')
+            return render_template('add_product.html')
+        
         name = request.form['name']
         description = request.form['description']
         price = float(request.form['price'])
@@ -575,20 +890,24 @@ def add_product():
             flash('Product added successfully!', 'success')
             return redirect(url_for('admin_products'))
         except Exception as e:
-            flash(f"Error: {str(e)}", 'danger')
+            flash(f"Error adding product: {str(e)}", 'danger')
             return render_template('add_product.html')
     
     return render_template('add_product.html')
 
 @app.route('/admin/edit_product/<int:product_id>', methods=['GET', 'POST'])
+@admin_required
 def edit_product(product_id):
-    if 'role' not in session or session['role'] != 'admin':
-        flash('Admin access required', 'danger')
-        return redirect(url_for('home'))
-    
     try:
         with get_cursor() as cur:
             if request.method == 'POST':
+                # Validate product data
+                validation_errors = validate_product_data(request.form)
+                if validation_errors:
+                    for error in validation_errors:
+                        flash(error, 'danger')
+                    return redirect(url_for('edit_product', product_id=product_id))
+                
                 name = request.form['name']
                 description = request.form['description']
                 price = float(request.form['price'])
@@ -646,31 +965,40 @@ def edit_product(product_id):
         return redirect(url_for('admin_products'))
 
 @app.route('/admin/delete_product/<int:product_id>', methods=['POST'])
+@admin_required
 def delete_product(product_id):
-    if 'role' not in session or session['role'] != 'admin':
-        flash('Admin access required', 'danger')
-        return redirect(url_for('home'))
-    
     try:
         with get_cursor() as cur:
-            cur.execute("DELETE FROM products WHERE product_id = ?", (product_id,))
-        flash('Product deleted successfully!', 'success')
+            # Check if product exists in any orders
+            cur.execute("""
+                SELECT COUNT(*) FROM order_items 
+                WHERE product_id = ?
+            """, (product_id,))
+            order_count = cur.fetchone()[0]
+            
+            if order_count > 0:
+                flash('Cannot delete product that has been ordered. Consider archiving instead.', 'danger')
+            else:
+                cur.execute("DELETE FROM products WHERE product_id = ?", (product_id,))
+                flash('Product deleted successfully!', 'success')
     except Exception as e:
-        flash(f"Error: {str(e)}", 'danger')
+        flash(f"Error deleting product: {str(e)}", 'danger')
     
     return redirect(url_for('admin_products'))
 
-@app.route('/remove_from_cart', methods=['POST'])
-def remove_from_cart():
-    if 'cart' in session and 'product_id' in request.form:
-        product_id = request.form['product_id']
-        cart = session['cart']
-        if str(product_id) in cart:
-            del cart[str(product_id)]
-            session['cart'] = cart
-            session.modified = True
-            flash('Item removed from cart', 'success')
-    return redirect(url_for('view_cart'))
+# Error handlers
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return render_template('500.html'), 500
+
+@app.errorhandler(413)
+def too_large(error):
+    flash('File too large. Maximum size is 16MB.', 'danger')
+    return redirect(request.referrer or url_for('home'))
 
 if __name__ == '__main__':
     # Initialize database if it doesn't exist

@@ -3,31 +3,110 @@
 {% block title %}Home - eShop{% endblock %}
 
 {% block content %}
-    <h1>Welcome to eShop</h1>
+<div class="page-header">
+    <h1><i class="fas fa-store"></i> Welcome to eShop</h1>
+    <p>Discover amazing products at great prices</p>
+</div>
+
+<!-- Search and Filter Section -->
+<div class="search-filter-section" style="margin-bottom: 30px;">
+    <div class="search-box" style="max-width: 500px; margin: 0 auto 20px;">
+        <form action="{{ url_for('search') }}" method="GET" style="display: flex; gap: 10px;">
+            <input type="text" name="q" value="{{ search_query or '' }}" 
+                   placeholder="Search products..." 
+                   style="flex: 1; padding: 12px 16px; border: 2px solid var(--border-color); border-radius: var(--radius);">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-search"></i> Search
+            </button>
+        </form>
+    </div>
     
+    {% if categories %}
+    <div class="category-filters" style="text-align: center;">
+        <div class="filter-buttons" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+            <a href="{{ url_for('home') }}" class="btn btn-sm {{ 'btn-primary' if not category else 'btn-outline' }}">
+                All Products
+            </a>
+            {% for cat in categories %}
+            <a href="{{ url_for('home', category=cat) }}" class="btn btn-sm {{ 'btn-primary' if category == cat else 'btn-outline' }}">
+                {{ cat }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Products Grid -->
+{% if products %}
     <div class="products-grid">
         {% for product in products %}
             <div class="product-card">
                 <div class="product-image">
                     <img src="{{ get_image_url(product.image_url) }}" alt="{{ product.name }}">
-                         alt="{{ product.name }}">
                 </div>
                 <div class="product-info">
                     <h3>{{ product.name }}</h3>
-                    <p class="price">${{ product.price }}</p>
-                    <p>{{ product.description|truncate(100) }}</p>
+                    <p class="price">${{ "%.2f"|format(product.price) }}</p>
+                    <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 15px;">
+                        {{ product.description|truncate(100) }}
+                    </p>
                     <div class="product-actions">
-                        <a href="{{ url_for('product_detail', product_id=product.product_id) }}" class="btn">View Details</a>
-                        <form action="{{ url_for('add_to_cart') }}" method="post" class="add-to-cart-form">
+                        <a href="{{ url_for('product_detail', product_id=product.product_id) }}" class="btn btn-outline">
+                            <i class="fas fa-eye"></i> View Details
+                        </a>
+                        <form action="{{ url_for('add_to_cart') }}" method="post" class="add-to-cart-form" style="margin: 0;">
                             <input type="hidden" name="product_id" value="{{ product.product_id }}">
-                            <input type="number" name="quantity" value="1" min="1" max="{{ product.stock_quantity }}">
-                            <button type="submit" class="btn">Add to Cart</button>
+                            <input type="hidden" name="quantity" value="1">
+                            <button type="submit" class="btn btn-primary" {{ 'disabled' if product.stock_quantity == 0 }}>
+                                <i class="fas fa-cart-plus"></i> Add to Cart
+                            </button>
                         </form>
                     </div>
+                    {% if product.stock_quantity == 0 %}
+                    <div style="margin-top: 10px; color: #ef4444; font-size: 0.8rem;">
+                        <i class="fas fa-times-circle"></i> Out of Stock
+                    </div>
+                    {% elif product.stock_quantity < 10 %}
+                    <div style="margin-top: 10px; color: #f59e0b; font-size: 0.8rem;">
+                        <i class="fas fa-exclamation-triangle"></i> Only {{ product.stock_quantity }} left!
+                    </div>
+                    {% endif %}
                 </div>
             </div>
-        {% else %}
-            <p>No products available at the moment.</p>
         {% endfor %}
     </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="pagination" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 40px;">
+        {% if page > 1 %}
+        <a href="{{ url_for('home', page=page-1, q=search_query, category=category) }}" class="btn btn-outline">
+            <i class="fas fa-chevron-left"></i> Previous
+        </a>
+        {% endif %}
+        
+        <span style="color: var(--text-light);">
+            Page {{ page }} of {{ total_pages }} ({{ total }} products)
+        </span>
+        
+        {% if page < total_pages %}
+        <a href="{{ url_for('home', page=page+1, q=search_query, category=category) }}" class="btn btn-outline">
+            Next <i class="fas fa-chevron-right"></i>
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+{% else %}
+    <div class="empty-state">
+        <i class="fas fa-search"></i>
+        <h3>No Products Found</h3>
+        <p>{% if search_query %}No products match your search "{{ search_query }}"{% else %}No products available at the moment.{% endif %}</p>
+        {% if search_query %}
+        <a href="{{ url_for('home') }}" class="btn btn-primary">
+            <i class="fas fa-undo"></i> View All Products
+        </a>
+        {% endif %}
+    </div>
+{% endif %}
 {% endblock %}
