@@ -4,7 +4,6 @@
 
 {% block content %}
 <style>
-
 /* Admin Products Page Specific Styles */
 .admin-products-container {
     max-width: 1400px;
@@ -40,16 +39,39 @@
     font-size: 1.1rem;
 }
 
+.header-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 200px;
+}
+
 .header-actions .btn-primary {
     background: rgba(255,255,255,0.2);
     border: 2px solid rgba(255,255,255,0.3);
     padding: 12px 24px;
     font-weight: 600;
     backdrop-filter: blur(10px);
+    text-align: center;
+}
+
+.header-actions .btn-outline {
+    background: rgba(255,255,255,0.1);
+    border: 2px solid rgba(255,255,255,0.3);
+    color: white;
+    padding: 12px 24px;
+    font-weight: 600;
+    backdrop-filter: blur(10px);
+    text-align: center;
 }
 
 .header-actions .btn-primary:hover {
     background: rgba(255,255,255,0.3);
+    transform: translateY(-2px);
+}
+
+.header-actions .btn-outline:hover {
+    background: rgba(255,255,255,0.2);
     transform: translateY(-2px);
 }
 
@@ -510,6 +532,12 @@
     .data-table {
         min-width: 1000px;
     }
+    
+    .header-actions {
+        width: 100%;
+        flex-direction: row;
+        justify-content: center;
+    }
 }
 
 @media (max-width: 768px) {
@@ -528,6 +556,16 @@
     
     .section-title {
         font-size: 1.25rem;
+    }
+    
+    .header-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .header-actions .btn {
+        width: 100%;
+        text-align: center;
     }
 }
 
@@ -559,6 +597,9 @@
             <p>Manage your store's products and orders</p>
         </div>
         <div class="header-actions">
+            <a href="{{ url_for('user_orders') }}" class="btn btn-outline">
+                <i class="fas fa-receipt"></i> Manage Orders
+            </a>
             <a href="{{ url_for('add_product') }}" class="btn btn-primary">
                 <i class="fas fa-plus"></i> Add New Product
             </a>
@@ -678,87 +719,7 @@
             </table>
         </div>
     </div>
-
-    <!-- Orders Table -->
-    <div class="table-section">
-        <h2 class="section-title">
-            <i class="fas fa-shopping-cart"></i> Orders Management
-        </h2>
-        <div class="table-container">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th class="id-col">Order_ID</th>
-                        <th class="customer-col">Customer</th>
-                        <th class="amount-col">Amount</th>
-                        <th class="status-col">Status</th>
-                        <th class="date-col">Date</th>
-                        <th class="actions-col">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for order in orders %}
-                    <tr class="data-row">
-                        <td class="id-cell">
-                            <span class="id-badge">#{{ order.order_id }}</span>
-                        </td>
-                        <td class="customer-cell">
-                            <div class="customer-info">
-                                <div class="customer-name">{{ order.username }}</div>
-                                <div class="customer-email">{{ order.email }}</div>
-                            </div>
-                        </td>
-                        <td class="amount-cell">
-                            <span class="amount">${{ "%.2f"|format(order.total) }}</span>
-                        </td>
-                        <td class="status-cell">
-                            <span class="status-badge status-{{ order.status }}">
-                                {{ order.status|title }}
-                            </span>
-                        </td>
-                        <td class="date-cell">
-                            <span class="date">{{ order.created_at[:16] }}</span>
-                        </td>
-                        <td class="actions-cell">
-                            <div class="action-buttons">
-                                <button class="btn-action btn-view" title="View Order Details" onclick="viewOrder({{ order.order_id }})">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                {% if order.status == 'pending' %}
-                                <button class="btn-action btn-process" title="Mark as Paid" onclick="updateOrderStatus({{ order.order_id }}, 'paid')">
-                                    <i class="fas fa-check"></i>
-                                </button>
-                                {% elif order.status == 'paid' %}
-                                <button class="btn-action btn-ship" title="Mark as Shipped" onclick="updateOrderStatus({{ order.order_id }}, 'shipped')">
-                                    <i class="fas fa-shipping-fast"></i>
-                                </button>
-                                {% endif %}
-                                {% if order.status != 'cancelled' %}
-                                <button class="btn-action btn-cancel" title="Cancel Order" onclick="updateOrderStatus({{ order.order_id }}, 'cancelled')">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr class="empty-row">
-                        <td colspan="6">
-                            <div class="empty-state">
-                                <i class="fas fa-receipt"></i>
-                                <h3>No Orders Found</h3>
-                                <p>Orders will appear here when customers make purchases</p>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
 </div>
-
-
 
 <script>
 // Make product rows clickable
@@ -775,19 +736,5 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
-
-function viewOrder(orderId) {
-    alert('View order details for order #' + orderId);
-    // In a real implementation, this would open a modal or redirect to order details
-}
-
-function updateOrderStatus(orderId, status) {
-    if (confirm('Are you sure you want to update order #' + orderId + ' to ' + status + '?')) {
-        // In a real implementation, this would make an AJAX call to update the order status
-        alert('Order #' + orderId + ' status updated to ' + status);
-        // You would typically reload the page or update the row dynamically
-        location.reload();
-    }
-}
 </script>
 {% endblock %}

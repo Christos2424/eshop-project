@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}My Orders - eShop{% endblock %}
+{% block title %}{% if session.role == 'admin' %}All Orders - Admin{% else %}My Orders - eShop{% endif %}{% endblock %}
 
 {% block content %}
 <style>
@@ -23,6 +23,40 @@
     align-items: center;
     justify-content: center;
     gap: 12px;
+}
+
+.orders-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.order-stat {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.order-stat:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #667eea;
+    margin-bottom: 8px;
+}
+
+.stat-label {
+    color: #666;
+    font-weight: 500;
+    font-size: 0.95rem;
 }
 
 .orders-container {
@@ -215,6 +249,21 @@
     text-decoration: underline;
 }
 
+.customer-info {
+    font-size: 0.9rem;
+    color: var(--text-light);
+}
+
+.customer-name {
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.admin-actions {
+    display: flex;
+    gap: 6px;
+}
+
 @media (max-width: 768px) {
     .orders-page {
         padding: 15px;
@@ -250,7 +299,7 @@
         align-items: flex-start;
     }
     
-    .order-actions {
+    .order-actions, .admin-actions {
         flex-direction: column;
     }
     
@@ -269,13 +318,52 @@
         padding: 6px 12px;
         font-size: 0.7rem;
     }
+    
+    .orders-stats {
+        grid-template-columns: 1fr;
+    }
 }
 </style>
 
 <div class="orders-page">
     <div class="orders-header">
-        <h1><i class="fas fa-receipt"></i> My Orders</h1>
+        <h1><i class="fas fa-receipt"></i> 
+            {% if session.role == 'admin' %}
+                All Orders - Admin Dashboard
+            {% else %}
+                My Orders
+            {% endif %}
+        </h1>
+        <p>
+            {% if session.role == 'admin' %}
+                Manage and view all customer orders
+            {% else %}
+                View your order history and track your purchases
+            {% endif %}
+        </p>
     </div>
+
+    {% if session.role == 'admin' %}
+    <!-- Admin Order Statistics -->
+    <div class="orders-stats">
+        <div class="order-stat">
+            <div class="stat-number">{{ orders|length }}</div>
+            <div class="stat-label">Total Orders</div>
+        </div>
+        <div class="order-stat">
+            <div class="stat-number">{{ orders|selectattr('status', 'equalto', 'pending')|list|length }}</div>
+            <div class="stat-label">Pending</div>
+        </div>
+        <div class="order-stat">
+            <div class="stat-number">{{ orders|selectattr('status', 'equalto', 'paid')|list|length }}</div>
+            <div class="stat-label">Paid</div>
+        </div>
+        <div class="order-stat">
+            <div class="stat-number">{{ orders|selectattr('status', 'equalto', 'shipped')|list|length }}</div>
+            <div class="stat-label">Shipped</div>
+        </div>
+    </div>
+    {% endif %}
 
     {% if orders %}
         <div class="orders-container">
@@ -309,6 +397,9 @@
                     <tr>
                         <th>Order ID</th>
                         <th>Date</th>
+                        {% if session.role == 'admin' %}
+                        <th>Customer</th>
+                        {% endif %}
                         <th>Products</th>
                         <th>Total</th>
                         <th>Status</th>
@@ -322,6 +413,14 @@
                             <td>
                                 <div class="order-date">{{ order.created_at[:16] }}</div>
                             </td>
+                            {% if session.role == 'admin' %}
+                            <td>
+                                <div class="customer-info">
+                                    <div class="customer-name">{{ order.username }}</div>
+                                    <div>{{ order.email }}</div>
+                                </div>
+                            </td>
+                            {% endif %}
                             <td class="order-products">
                                 <div class="order-product-list">
                                     {% if order.product_names %}
@@ -341,16 +440,38 @@
                                 <span class="order-status status-{{ order.status }}">{{ order.status|title }}</span>
                             </td>
                             <td>
-                                <div class="order-actions">
-                                    <a href="#" class="btn btn-sm btn-outline btn-order-action">
+                                {% if session.role == 'admin' %}
+                                <div class="admin-actions">
+                                    <button class="btn btn-sm btn-outline btn-order-action" onclick="viewOrderDetails({{ order.order_id }})">
                                         <i class="fas fa-eye"></i> View
-                                    </a>
-                                    {% if order.status == 'shipped' %}
-                                    <a href="#" class="btn btn-sm btn-primary btn-order-action">
-                                        <i class="fas fa-truck"></i> Track
-                                    </a>
+                                    </button>
+                                    {% if order.status == 'pending' %}
+                                    <button class="btn btn-sm btn-primary btn-order-action" onclick="updateOrderStatus({{ order.order_id }}, 'paid')">
+                                        <i class="fas fa-check"></i> Mark Paid
+                                    </button>
+                                    {% elif order.status == 'paid' %}
+                                    <button class="btn btn-sm btn-success btn-order-action" onclick="updateOrderStatus({{ order.order_id }}, 'shipped')">
+                                        <i class="fas fa-shipping-fast"></i> Ship
+                                    </button>
+                                    {% endif %}
+                                    {% if order.status != 'cancelled' %}
+                                    <button class="btn btn-sm btn-danger btn-order-action" onclick="updateOrderStatus({{ order.order_id }}, 'cancelled')">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </button>
                                     {% endif %}
                                 </div>
+                                {% else %}
+                                <div class="order-actions">
+                                    <button class="btn btn-sm btn-outline btn-order-action" onclick="viewOrderDetails({{ order.order_id }})">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                    {% if order.status == 'shipped' %}
+                                    <button class="btn btn-sm btn-primary btn-order-action">
+                                        <i class="fas fa-truck"></i> Track
+                                    </button>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
                             </td>
                         </tr>
                     {% endfor %}
@@ -360,8 +481,20 @@
     {% else %}
         <div class="empty-orders">
             <i class="fas fa-receipt"></i>
-            <h3>No Orders Yet</h3>
-            <p>You haven't placed any orders yet. Start shopping to see your orders here!</p>
+            <h3>
+                {% if session.role == 'admin' %}
+                    No Orders Yet
+                {% else %}
+                    No Orders Yet
+                {% endif %}
+            </h3>
+            <p>
+                {% if session.role == 'admin' %}
+                    Orders will appear here when customers make purchases
+                {% else %}
+                    You haven't placed any orders yet. Start shopping to see your orders here!
+                {% endif %}
+            </p>
             <a href="{{ url_for('home') }}" class="btn btn-primary">
                 <i class="fas fa-shopping-bag"></i> Start Shopping
             </a>
@@ -386,7 +519,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Status filter
             if (statusValue !== 'all') {
                 const statusElement = row.querySelector('.order-status');
-                const rowStatus = statusElement.className.includes(statusValue);
+                const rowStatus = statusElement.className.includes(`status-${statusValue}`);
                 if (!rowStatus) {
                     showRow = false;
                 }
@@ -405,5 +538,39 @@ document.addEventListener('DOMContentLoaded', function() {
     statusFilter.addEventListener('change', filterOrders);
     dateFilter.addEventListener('change', filterOrders);
 });
+
+// Order management functions
+function viewOrderDetails(orderId) {
+    alert('Viewing details for order #' + orderId);
+    // In a real implementation, this would open a modal or redirect to order details
+    // window.location.href = `/order/${orderId}`;
+}
+
+function updateOrderStatus(orderId, status) {
+    const statusText = status.charAt(0).toUpperCase() + status.slice(1);
+    if (confirm(`Are you sure you want to update order #${orderId} to "${statusText}"?`)) {
+        // In a real implementation, this would make an AJAX call to update the order status
+        fetch(`/admin/update_order/${orderId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ status: status })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Order #${orderId} status updated to ${status}`);
+                location.reload();
+            } else {
+                alert('Error updating order status');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating order status');
+        });
+    }
+}
 </script>
 {% endblock %}

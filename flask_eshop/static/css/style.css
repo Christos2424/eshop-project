@@ -684,3 +684,47 @@ body {
 .nav-link, .btn, .product-card {
     transition: var(--transition);
 }
+
+/* Out of Stock Styles */
+.product-card.out-of-stock {
+    opacity: 0.8;
+    position: relative;
+}
+
+.product-card.out-of-stock::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.05);
+    z-index: 1;
+    pointer-events: none;
+}
+
+.out-of-stock-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    padding: 8px;
+    text-align: center;
+    font-weight: 600;
+    z-index: 2;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.8; }
+    50% { opacity: 1; }
+    100% { opacity: 0.8; }
+}
+
+/* Disabled state for out of stock buttons */
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}

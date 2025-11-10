@@ -21,11 +21,26 @@
         </form>
     </div>
     
+    <!-- Stock Filter -->
+    <div class="stock-filter" style="text-align: center; margin-bottom: 20px;">
+        <div class="filter-buttons" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+            <a href="{{ url_for('home', stock='all') }}" class="btn btn-sm {{ 'btn-primary' if request.args.get('stock', 'all') == 'all' else 'btn-outline' }}">
+                All Products
+            </a>
+            <a href="{{ url_for('home', stock='in_stock') }}" class="btn btn-sm {{ 'btn-primary' if request.args.get('stock') == 'in_stock' else 'btn-outline' }}">
+                In Stock
+            </a>
+            <a href="{{ url_for('home', stock='out_of_stock') }}" class="btn btn-sm {{ 'btn-primary' if request.args.get('stock') == 'out_of_stock' else 'btn-outline' }}">
+                Out of Stock
+            </a>
+        </div>
+    </div>
+    
     {% if categories %}
     <div class="category-filters" style="text-align: center;">
         <div class="filter-buttons" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
             <a href="{{ url_for('home') }}" class="btn btn-sm {{ 'btn-primary' if not category else 'btn-outline' }}">
-                All Products
+                All Categories
             </a>
             {% for cat in categories %}
             <a href="{{ url_for('home', category=cat) }}" class="btn btn-sm {{ 'btn-primary' if category == cat else 'btn-outline' }}">
@@ -41,7 +56,13 @@
 {% if products %}
     <div class="products-grid">
         {% for product in products %}
-            <div class="product-card">
+            <div class="product-card {{ 'out-of-stock' if product.stock_quantity == 0 }}">
+                {% if product.stock_quantity == 0 %}
+                <div class="out-of-stock-overlay">
+                    <i class="fas fa-times-circle"></i> Out of Stock
+                </div>
+                {% endif %}
+                
                 <div class="product-image">
                     <img src="{{ get_image_url(product.image_url) }}" alt="{{ product.name }}">
                 </div>
@@ -51,27 +72,42 @@
                     <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 15px;">
                         {{ product.description|truncate(100) }}
                     </p>
+                    
+                    <!-- Stock Status -->
+                    <div class="stock-info" style="margin-bottom: 15px;">
+                        {% if product.stock_quantity == 0 %}
+                            <span style="color: #ef4444; font-size: 0.9rem;">
+                                <i class="fas fa-times-circle"></i> Out of Stock
+                            </span>
+                        {% elif product.stock_quantity < 10 %}
+                            <span style="color: #f59e0b; font-size: 0.9rem;">
+                                <i class="fas fa-exclamation-triangle"></i> Only {{ product.stock_quantity }} left!
+                            </span>
+                        {% else %}
+                            <span style="color: #10b981; font-size: 0.9rem;">
+                                <i class="fas fa-check-circle"></i> In Stock ({{ product.stock_quantity }} available)
+                            </span>
+                        {% endif %}
+                    </div>
+                    
                     <div class="product-actions">
                         <a href="{{ url_for('product_detail', product_id=product.product_id) }}" class="btn btn-outline">
                             <i class="fas fa-eye"></i> View Details
                         </a>
+                        {% if product.stock_quantity > 0 %}
                         <form action="{{ url_for('add_to_cart') }}" method="post" class="add-to-cart-form" style="margin: 0;">
                             <input type="hidden" name="product_id" value="{{ product.product_id }}">
                             <input type="hidden" name="quantity" value="1">
-                            <button type="submit" class="btn btn-primary" {{ 'disabled' if product.stock_quantity == 0 }}>
+                            <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-cart-plus"></i> Add to Cart
                             </button>
                         </form>
+                        {% else %}
+                        <button class="btn btn-secondary" disabled style="cursor: not-allowed; opacity: 0.6;">
+                            <i class="fas fa-cart-plus"></i> Out of Stock
+                        </button>
+                        {% endif %}
                     </div>
-                    {% if product.stock_quantity == 0 %}
-                    <div style="margin-top: 10px; color: #ef4444; font-size: 0.8rem;">
-                        <i class="fas fa-times-circle"></i> Out of Stock
-                    </div>
-                    {% elif product.stock_quantity < 10 %}
-                    <div style="margin-top: 10px; color: #f59e0b; font-size: 0.8rem;">
-                        <i class="fas fa-exclamation-triangle"></i> Only {{ product.stock_quantity }} left!
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         {% endfor %}
@@ -81,7 +117,7 @@
     {% if total_pages > 1 %}
     <div class="pagination" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 40px;">
         {% if page > 1 %}
-        <a href="{{ url_for('home', page=page-1, q=search_query, category=category) }}" class="btn btn-outline">
+        <a href="{{ url_for('home', page=page-1, q=search_query, category=category, stock=request.args.get('stock', 'all')) }}" class="btn btn-outline">
             <i class="fas fa-chevron-left"></i> Previous
         </a>
         {% endif %}
@@ -91,7 +127,7 @@
         </span>
         
         {% if page < total_pages %}
-        <a href="{{ url_for('home', page=page+1, q=search_query, category=category) }}" class="btn btn-outline">
+        <a href="{{ url_for('home', page=page+1, q=search_query, category=category, stock=request.args.get('stock', 'all')) }}" class="btn btn-outline">
             Next <i class="fas fa-chevron-right"></i>
         </a>
         {% endif %}
@@ -102,11 +138,55 @@
         <i class="fas fa-search"></i>
         <h3>No Products Found</h3>
         <p>{% if search_query %}No products match your search "{{ search_query }}"{% else %}No products available at the moment.{% endif %}</p>
-        {% if search_query %}
+        {% if search_query or category or request.args.get('stock') %}
         <a href="{{ url_for('home') }}" class="btn btn-primary">
             <i class="fas fa-undo"></i> View All Products
         </a>
         {% endif %}
     </div>
 {% endif %}
+
+<style>
+.product-card.out-of-stock {
+    opacity: 0.8;
+    position: relative;
+}
+
+.product-card.out-of-stock::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.05);
+    z-index: 1;
+    pointer-events: none;
+}
+
+.out-of-stock-overlay {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    z-index: 2;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.8; }
+    50% { opacity: 1; }
+    100% { opacity: 0.8; }
+}
+
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+</style>
 {% endblock %}

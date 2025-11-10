@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, g
+from flask import Flask, render_template, request, redirect, url_for, session, flash, g, jsonify
 import sqlite3
 import bcrypt
 import os
@@ -159,14 +159,14 @@ def validate_product_data(data):
     
     try:
         price = float(data.get('price', 0))
-        if price <= 0:
-            errors.append("Price must be positive")
+        if price < 0:  # Changed from <= 0 to < 0 to allow free products
+            errors.append("Price cannot be negative")
     except (ValueError, TypeError):
         errors.append("Price must be a valid number")
     
     try:
         stock = int(data.get('stock', 0))
-        if stock < 0:
+        if stock < 0:  # Allow 0 stock
             errors.append("Stock cannot be negative")
     except (ValueError, TypeError):
         errors.append("Stock must be a valid integer")
@@ -327,30 +327,42 @@ def init_db():
     conn.commit()
     conn.close()
     print("Database initialized successfully!")
-
+    
 @app.route("/")
 def home():
     page = request.args.get('page', 1, type=int)
     search_query = request.args.get('q', '')
     category = request.args.get('category', '')
+    stock_filter = request.args.get('stock', 'all')  # 'all', 'in_stock', 'out_of_stock'
     per_page = 12
     
     try:
         with get_cursor() as cur:
             # Build query based on filters
-            query = "SELECT * FROM products WHERE stock_quantity > 0"
-            count_query = "SELECT COUNT(*) FROM products WHERE stock_quantity > 0"
+            query = "SELECT * FROM products"
+            count_query = "SELECT COUNT(*) FROM products"
             params = []
+            conditions = []
             
             if search_query:
-                query += " AND (name LIKE ? OR description LIKE ?)"
-                count_query += " AND (name LIKE ? OR description LIKE ?)"
+                conditions.append("(name LIKE ? OR description LIKE ?)")
                 params.extend([f'%{search_query}%', f'%{search_query}%'])
             
             if category:
-                query += " AND category = ?"
-                count_query += " AND category = ?"
+                conditions.append("category = ?")
                 params.append(category)
+            
+            # Stock filter
+            if stock_filter == 'in_stock':
+                conditions.append("stock_quantity > 0")
+            elif stock_filter == 'out_of_stock':
+                conditions.append("stock_quantity = 0")
+            # 'all' shows everything, so no condition needed
+            
+            if conditions:
+                where_clause = " WHERE " + " AND ".join(conditions)
+                query += where_clause
+                count_query += where_clause
             
             # Get total count
             cur.execute(count_query, params)
@@ -376,23 +388,33 @@ def home():
                              total_pages=total_pages,
                              search_query=search_query,
                              category=category,
-                             categories=categories)
+                             categories=categories,
+                             stock_filter=stock_filter)
     except Exception as e:
         flash(f"Error loading products: {str(e)}", 'danger')
         return render_template('index.html', products=[], page=1, total=0, total_pages=0)
-
+    
 @app.route('/search')
 def search():
     query = request.args.get('q', '')
+    stock_filter = request.args.get('stock', 'all')
+    
     if query:
         try:
             with get_cursor() as cur:
-                cur.execute(
-                    "SELECT * FROM products WHERE name LIKE ? OR description LIKE ?",
-                    (f'%{query}%', f'%{query}%')
-                )
+                # Build search query with stock filter
+                sql = "SELECT * FROM products WHERE (name LIKE ? OR description LIKE ?)"
+                params = [f'%{query}%', f'%{query}%']
+                
+                if stock_filter == 'in_stock':
+                    sql += " AND stock_quantity > 0"
+                elif stock_filter == 'out_of_stock':
+                    sql += " AND stock_quantity = 0"
+                
+                cur.execute(sql, params)
                 products = cur.fetchall()
-            return render_template('index.html', products=products, query=query)
+            
+            return render_template('index.html', products=products, query=query, stock_filter=stock_filter)
         except Exception as e:
             flash(f"Search error: {str(e)}", 'danger')
     return redirect(url_for('home'))
@@ -515,7 +537,7 @@ def add_to_cart():
         return redirect(request.referrer or url_for('home'))
     
     try:
-        # Validate product exists and has stock
+        # Validate product exists
         with get_cursor() as cur:
             cur.execute("SELECT product_id, name, stock_quantity FROM products WHERE product_id = ?", (product_id,))
             product = cur.fetchone()
@@ -524,8 +546,14 @@ def add_to_cart():
                 flash('Product not found', 'danger')
                 return redirect(request.referrer or url_for('home'))
             
+            # Allow adding to cart only if product has stock
             if product['stock_quantity'] < quantity:
                 flash(f"Only {product['stock_quantity']} units of {product['name']} available", 'warning')
+                return redirect(request.referrer or url_for('home'))
+            
+            # Prevent adding out-of-stock products to cart
+            if product['stock_quantity'] == 0:
+                flash(f"{product['name']} is currently out of stock", 'warning')
                 return redirect(request.referrer or url_for('home'))
         
         if 'cart' not in session:
@@ -550,6 +578,52 @@ def add_to_cart():
     except Exception as e:
         flash(f"Error adding to cart: {str(e)}", 'danger')
         return redirect(request.referrer or url_for('home'))
+
+@app.route('/update_cart', methods=['POST'])
+def update_cart():
+    product_id = request.form.get('product_id')
+    quantity = request.form.get('quantity')
+    
+    if not product_id or not quantity:
+        flash('Invalid request', 'danger')
+        return redirect(url_for('view_cart'))
+    
+    try:
+        quantity = int(quantity)
+        
+        if 'cart' in session and str(product_id) in session['cart']:
+            # Check if product is in stock before allowing quantity updates
+            with get_cursor() as cur:
+                cur.execute("SELECT stock_quantity FROM products WHERE product_id = ?", (product_id,))
+                product = cur.fetchone()
+                
+                if product and product['stock_quantity'] == 0:
+                    flash('This product is out of stock and cannot be added to cart', 'warning')
+                    # Remove from cart if already there
+                    del session['cart'][str(product_id)]
+                    session.modified = True
+                    return redirect(url_for('view_cart'))
+                
+                if product and quantity <= product['stock_quantity']:
+                    if quantity <= 0:
+                        del session['cart'][str(product_id)]
+                        flash('Item removed from cart', 'success')
+                    else:
+                        session['cart'][str(product_id)] = quantity
+                        flash('Cart updated successfully!', 'success')
+                else:
+                    flash('Requested quantity not available', 'warning')
+            
+            session.modified = True
+        else:
+            flash('Item not found in cart', 'warning')
+    
+    except ValueError:
+        flash('Invalid quantity', 'danger')
+    except Exception as e:
+        flash(f"Error updating cart: {str(e)}", 'danger')
+    
+    return redirect(url_for('view_cart'))
 
 @app.route("/cart")
 def view_cart():
@@ -608,45 +682,6 @@ def view_cart():
         # If there's an error, clear the cart to prevent further issues
         session.pop('cart', None)
         return render_template("cart.html", cart_items=[], total=0)
-
-@app.route('/update_cart', methods=['POST'])
-def update_cart():
-    product_id = request.form.get('product_id')
-    quantity = request.form.get('quantity')
-    
-    if not product_id or not quantity:
-        flash('Invalid request', 'danger')
-        return redirect(url_for('view_cart'))
-    
-    try:
-        quantity = int(quantity)
-        
-        if 'cart' in session and str(product_id) in session['cart']:
-            if quantity <= 0:
-                del session['cart'][str(product_id)]
-                flash('Item removed from cart', 'success')
-            else:
-                # Check stock availability
-                with get_cursor() as cur:
-                    cur.execute("SELECT stock_quantity FROM products WHERE product_id = ?", (product_id,))
-                    product = cur.fetchone()
-                    
-                    if product and quantity <= product['stock_quantity']:
-                        session['cart'][str(product_id)] = quantity
-                        flash('Cart updated successfully!', 'success')
-                    else:
-                        flash('Requested quantity not available', 'warning')
-            
-            session.modified = True
-        else:
-            flash('Item not found in cart', 'warning')
-    
-    except ValueError:
-        flash('Invalid quantity', 'danger')
-    except Exception as e:
-        flash(f"Error updating cart: {str(e)}", 'danger')
-    
-    return redirect(url_for('view_cart'))
 
 @app.route('/remove_from_cart', methods=['POST'])
 def remove_from_cart():
@@ -792,22 +827,40 @@ def checkout():
 def user_orders():
     try:
         with get_cursor() as cur:
-            cur.execute("""
-                SELECT o.*, 
-                       GROUP_CONCAT(p.name || ' (x' || oi.quantity || ')') as product_names
-                FROM orders o
-                JOIN order_items oi ON o.order_id = oi.order_id
-                JOIN products p ON oi.product_id = p.product_id
-                WHERE o.user_id = ?
-                GROUP BY o.order_id
-                ORDER BY o.created_at DESC
-            """, (session['user_id'],))
+            if session['role'] == 'admin':
+                # Admin can see all orders
+                cur.execute("""
+                    SELECT o.*, 
+                           u.username, 
+                           u.email,
+                           GROUP_CONCAT(p.name || ' (x' || oi.quantity || ')') as product_names
+                    FROM orders o
+                    JOIN users u ON o.user_id = u.user_id
+                    JOIN order_items oi ON o.order_id = oi.order_id
+                    JOIN products p ON oi.product_id = p.product_id
+                    GROUP BY o.order_id
+                    ORDER BY o.created_at DESC
+                """)
+            else:
+                # Regular users only see their own orders
+                cur.execute("""
+                    SELECT o.*, 
+                           GROUP_CONCAT(p.name || ' (x' || oi.quantity || ')') as product_names
+                    FROM orders o
+                    JOIN order_items oi ON o.order_id = oi.order_id
+                    JOIN products p ON oi.product_id = p.product_id
+                    WHERE o.user_id = ?
+                    GROUP BY o.order_id
+                    ORDER BY o.created_at DESC
+                """, (session['user_id'],))
+            
             orders = cur.fetchall()
         
         return render_template('orders.html', orders=orders)
     except Exception as e:
         flash(f"Error loading orders: {str(e)}", 'danger')
         return render_template('orders.html', orders=[])
+
 
 @app.route('/admin/products')
 @admin_required
@@ -985,6 +1038,27 @@ def delete_product(product_id):
         flash(f"Error deleting product: {str(e)}", 'danger')
     
     return redirect(url_for('admin_products'))
+
+# Add this route for admin order status updates
+@app.route('/admin/update_order/<int:order_id>', methods=['POST'])
+@admin_required
+def update_order_status(order_id):
+    try:
+        data = request.get_json()
+        new_status = data.get('status')
+        
+        if new_status not in ['pending', 'paid', 'shipped', 'cancelled']:
+            return jsonify({'success': False, 'error': 'Invalid status'})
+        
+        with get_cursor() as cur:
+            cur.execute(
+                "UPDATE orders SET status = ? WHERE order_id = ?",
+                (new_status, order_id)
+            )
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 # Error handlers
 @app.errorhandler(404)

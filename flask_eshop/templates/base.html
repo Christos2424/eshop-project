@@ -25,11 +25,24 @@
                         <i class="fas fa-home"></i>
                         <span>Home</span>
                     </a>
+                    
+                    <!-- Orders link for regular users only (not admins) -->
+                    {% if 'user_id' in session and session.role != 'admin' %}
+                    <a href="{{ url_for('user_orders') }}" class="nav-link">
+                        <i class="fas fa-receipt"></i>
+                        <span>My Orders</span>
+                    </a>
+                    {% endif %}
+                    
                     <a href="{{ url_for('view_cart') }}" class="nav-link cart-link">
                         <i class="fas fa-shopping-cart"></i>
                         <span>Cart</span>
                         {% if session.cart %}
-                        <span class="cart-count">{{ session.cart|length }}</span>
+                        <!-- Calculate total quantity instead of counting distinct products -->
+                        <span class="cart-count">
+                            {% set total_quantity = session.cart.values() | sum %}
+                            {{ total_quantity }}
+                        </span>
                         {% endif %}
                     </a>
                     
@@ -102,6 +115,9 @@
                     <a href="{{ url_for('home') }}">Home</a>
                     <a href="{{ url_for('view_cart') }}">Shopping Cart</a>
                     {% if session.user_id %}
+                        {% if session.role != 'admin' %}
+                        <a href="{{ url_for('user_orders') }}">My Orders</a>
+                        {% endif %}
                     <a href="{{ url_for('logout') }}">Logout</a>
                     {% else %}
                     <a href="{{ url_for('login') }}">Login</a>

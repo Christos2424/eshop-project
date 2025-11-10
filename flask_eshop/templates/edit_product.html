@@ -31,6 +31,7 @@
                 
                 <div class="form-group">
                     <label for="stock">Stock Quantity *</label>
+                    <!-- CHANGED: min="0" instead of min="1" -->
                     <input type="number" id="stock" name="stock" min="0" value="{{ product.stock_quantity }}" required class="form-control">
                 </div>
             </div>
@@ -102,4 +103,19 @@
         </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const stockInput = document.getElementById('stock');
+    if (stockInput) {
+        // Ensure the input can accept 0
+        stockInput.addEventListener('change', function() {
+            // Allow 0 values
+            if (this.value < 0) {
+                this.value = 0;
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

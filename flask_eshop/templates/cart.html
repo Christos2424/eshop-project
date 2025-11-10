@@ -308,6 +308,15 @@
 <div class="cart-page">
     <div class="cart-header">
         <h1><i class="fas fa-shopping-cart"></i> Your Shopping Cart</h1>
+        <!-- Added total items display -->
+        <p style="color: var(--text-light);">
+            Total items: 
+            {% if session.cart %}
+                {{ session.cart.values() | sum }}
+            {% else %}
+                0
+            {% endif %}
+        </p>
     </div>
     
     {% if cart_items %}
@@ -368,7 +377,7 @@
                             </td>
                             <td class="item-total">${{ "%.2f"|format(item.total) }}</td>
                             <td>
-                                <form action="{{ url_for('remove_from_cart') }}" method="post" class="remove-form">
+                                <form action="{{ url_for('remove_from_cart') }}" method="post" class="remove-form" onsubmit="updateCartCountOnRemove({{ item.quantity }})">
                                     <input type="hidden" name="product_id" value="{{ item.product.product_id }}">
                                     <button type="submit" class="btn btn-sm btn-danger">
                                         <i class="fas fa-trash"></i> Remove
@@ -439,4 +448,40 @@
         </div>
     {% endif %}
 </div>
+
+<script>
+// Function to update cart count when removing items
+function updateCartCountOnRemove(quantityToRemove) {
+    const cartCountElement = document.querySelector('.cart-count');
+    if (cartCountElement) {
+        const currentCount = parseInt(cartCountElement.textContent) || 0;
+        const newCount = Math.max(0, currentCount - quantityToRemove);
+        
+        // Update the count immediately for better UX
+        cartCountElement.textContent = newCount;
+        
+        if (newCount > 0) {
+            cartCountElement.style.display = 'flex';
+        } else {
+            cartCountElement.style.display = 'none';
+        }
+    }
+}
+
+// Update quantity buttons to update cart count
+document.addEventListener('DOMContentLoaded', function() {
+    const quantityForms = document.querySelectorAll('.quantity-controls form');
+    
+    quantityForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            // The form will handle the actual update, we just update the UI immediately
+            setTimeout(() => {
+                // Reload the page to get updated cart data
+                // In a real app, you'd use AJAX, but for simplicity we'll reload
+                window.location.reload();
+            }, 100);
+        });
+    });
+});
+</script>
 {% endblock %}
