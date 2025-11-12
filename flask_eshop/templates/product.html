@@ -503,27 +503,15 @@
 
             <div class="product-pricing">
                 <div class="current-price">${{ "%.2f"|format(product.price) }}</div>
-                {% if product.price > 50 %}
-                <div class="price-save">
-                    <span class="save-badge">You save ${{ "%.2f"|format(product.price * 0.15) }}</span>
-                </div>
-                {% endif %}
             </div>
 
             <div class="product-meta">
-                <div class="meta-item">
-                    <i class="fas fa-box"></i>
-                    <span class="meta-label">SKU:</span>
-                    <span class="meta-value">#{{ product.product_id }}</span>
-                </div>
                 <div class="meta-item">
                     <i class="fas fa-tag"></i>
                     <span class="meta-label">Category:</span>
                     <span class="meta-value">{{ product.category or 'General' }}</span>
                 </div>
-            </div>
-
-            <div class="stock-status">
+                
                 {% if product.stock_quantity > 0 %}
                     <div class="stock-available">
                         <i class="fas fa-check-circle"></i>
@@ -536,7 +524,10 @@
                         <span class="stock-text">Out of Stock</span>
                     </div>
                 {% endif %}
+                
             </div>
+
+            
 
             <div class="product-description">
                 <h3>Description</h3>

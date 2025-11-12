@@ -158,12 +158,9 @@
 .id-col { width: 80px; }
 .image-col { width: 100px; }
 .name-col { min-width: 250px; }
-.price-col, .amount-col { width: 120px; }
+.price-col { width: 120px; }
 .stock-col { width: 140px; }
 .category-col { width: 150px; }
-.status-col { width: 120px; }
-.date-col { width: 150px; }
-.customer-col { min-width: 200px; }
 .actions-col { width: 150px; }
 
 .data-row {
@@ -279,28 +276,11 @@
     line-height: 1.4;
 }
 
-.customer-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.customer-name {
-    font-weight: 600;
-    color: #1a202c;
-    font-size: 0.95rem;
-}
-
-.customer-email {
-    color: #718096;
-    font-size: 0.8rem;
-}
-
-.price-cell, .amount-cell {
+.price-cell {
     width: 120px;
 }
 
-.price, .amount {
+.price {
     font-weight: 700;
     color: #059669;
     font-size: 1.1rem;
@@ -367,40 +347,6 @@
     font-weight: 500;
 }
 
-.status-cell {
-    width: 120px;
-}
-
-.status-badge.status-pending {
-    background: #f59e0b;
-    color: white;
-}
-
-.status-badge.status-paid {
-    background: #3b82f6;
-    color: white;
-}
-
-.status-badge.status-shipped {
-    background: #10b981;
-    color: white;
-}
-
-.status-badge.status-cancelled {
-    background: #6b7280;
-    color: white;
-}
-
-.date-cell {
-    width: 150px;
-}
-
-.date {
-    color: #718096;
-    font-size: 0.9rem;
-    font-weight: 500;
-}
-
 .actions-cell {
     width: 150px;
 }
@@ -447,38 +393,6 @@
     background: #dc2626;
 }
 
-.btn-view {
-    background: #10b981;
-}
-
-.btn-view:hover {
-    background: #059669;
-}
-
-.btn-process {
-    background: #3b82f6;
-}
-
-.btn-process:hover {
-    background: #2563eb;
-}
-
-.btn-ship {
-    background: #10b981;
-}
-
-.btn-ship:hover {
-    background: #059669;
-}
-
-.btn-cancel {
-    background: #6b7280;
-}
-
-.btn-cancel:hover {
-    background: #4b5563;
-}
-
 .action-form {
     display: inline;
 }
@@ -507,6 +421,59 @@
 .empty-state p {
     margin: 0 0 24px 0;
     font-size: 1rem;
+}
+
+/* Admin Filter Styles */
+.admin-filters {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    margin-bottom: 24px;
+}
+
+.filter-section {
+    margin-bottom: 0;
+}
+
+.filter-row {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filter-group label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #4a5568;
+}
+
+.filter-select {
+    padding: 10px 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    background: white;
+    font-size: 0.9rem;
+    min-width: 180px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.filter-select:hover {
+    border-color: #cbd5e0;
 }
 
 @media (max-width: 1024px) {
@@ -567,6 +534,19 @@
         width: 100%;
         text-align: center;
     }
+
+    .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-group {
+        width: 100%;
+    }
+    
+    .filter-select {
+        min-width: auto;
+    }
 }
 
 @media (max-width: 480px) {
@@ -593,12 +573,12 @@
 <div class="admin-products-container">
     <div class="admin-header">
         <div class="header-content">
-            <h1><i class="fas fa-boxes"></i> Admin Dashboard</h1>
-            <p>Manage your store's products and orders</p>
+            <h1><i class="fas fa-boxes"></i> Products Management </h1>
+            <p> Manage your store's products and inventory </p>
         </div>
         <div class="header-actions">
             <a href="{{ url_for('user_orders') }}" class="btn btn-outline">
-                <i class="fas fa-receipt"></i> Manage Orders
+                <i class="fas fa-receipt"></i> View Orders
             </a>
             <a href="{{ url_for('add_product') }}" class="btn btn-primary">
                 <i class="fas fa-plus"></i> Add New Product
@@ -620,16 +600,48 @@
             <div class="stat-label">Out of Stock</div>
         </div>
         <div class="stat-item">
-            <div class="stat-number">{{ orders|length }}</div>
-            <div class="stat-label">Total Orders</div>
+            <div class="stat-number">{{ products|selectattr('stock_quantity', 'lt', 10)|selectattr('stock_quantity', 'gt', 0)|list|length }}</div>
+            <div class="stat-label">Low Stock</div>
         </div>
     </div>
 
     <!-- Products Table -->
     <div class="table-section">
         <h2 class="section-title">
-            <i class="fas fa-box"></i> Products Management
+            <i class="fas fa-box"></i> Products
+            <span style="font-size: 0.9rem; color: var(--text-light); margin-left: 12px;">
+            </span>
         </h2>
+        
+        <!-- Products Filters -->
+        <div class="admin-filters">
+            <div class="filter-section">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="stockFilter"><i class="fas fa-filter"></i> Stock Status</label>
+                        <select id="stockFilter" class="filter-select">
+                            <option value="all">All Products</option>
+                            <option value="in_stock">In Stock</option>
+                            <option value="low_stock">Low Stock</option>
+                            <option value="out_of_stock">Out of Stock</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="productSortBy"><i class="fas fa-sort"></i> Sort By</label>
+                        <select id="productSortBy" class="filter-select">
+                            <option value="id_asc">ID: Low to High</option>
+                            <option value="id_desc">ID: High to Low</option>
+                            <option value="name_asc">Name: A to Z</option>
+                            <option value="name_desc">Name: Z to A</option>
+                            <option value="price_asc">Price: Low to High</option>
+                            <option value="price_desc">Price: High to Low</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <div class="table-container">
             <table class="data-table">
                 <thead>
@@ -643,9 +655,14 @@
                         <th class="actions-col">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="productsTableBody">
                     {% for product in products %}
-                    <tr class="data-row clickable-row" data-href="{{ url_for('product_detail', product_id=product.product_id) }}">
+                    <tr class="data-row clickable-row" 
+                        data-href="{{ url_for('product_detail', product_id=product.product_id) }}"
+                        data-id="{{ product.product_id }}"
+                        data-name="{{ product.name }}"
+                        data-price="{{ product.price }}"
+                        data-stock="{{ product.stock_quantity }}">
                         <td class="id-cell">
                             <span class="id-badge">#{{ product.product_id }}</span>
                         </td>
@@ -722,6 +739,85 @@
 </div>
 
 <script>
+// Products Filtering and Sorting
+document.addEventListener('DOMContentLoaded', function() {
+    const productsTableBody = document.getElementById('productsTableBody');
+    const productRows = Array.from(productsTableBody.querySelectorAll('.data-row'));
+    
+    let activeProductFilters = {
+        stock: 'all',
+        sort: 'id_asc'
+    };
+
+    // Products event listeners - automatic filtering
+    document.getElementById('stockFilter')?.addEventListener('change', applyProductFilters);
+    document.getElementById('productSortBy')?.addEventListener('change', applyProductFilters);
+
+    function applyProductFilters() {
+        // Get current filter values
+        activeProductFilters.stock = document.getElementById('stockFilter').value;
+        activeProductFilters.sort = document.getElementById('productSortBy').value;
+        
+        let filteredRows = [...productRows];
+        
+        // Apply stock filter
+        if (activeProductFilters.stock !== 'all') {
+            filteredRows = filteredRows.filter(row => {
+                const stock = parseInt(row.dataset.stock);
+                if (activeProductFilters.stock === 'in_stock') return stock > 0;
+                if (activeProductFilters.stock === 'low_stock') return stock > 0 && stock < 10;
+                if (activeProductFilters.stock === 'out_of_stock') return stock === 0;
+                return true;
+            });
+        }
+        
+        // Apply sorting
+        filteredRows.sort((a, b) => {
+            switch (activeProductFilters.sort) {
+                case 'id_asc':
+                    return parseInt(a.dataset.id) - parseInt(b.dataset.id);
+                case 'id_desc':
+                    return parseInt(b.dataset.id) - parseInt(a.dataset.id);
+                case 'name_asc':
+                    return a.dataset.name.localeCompare(b.dataset.name);
+                case 'name_desc':
+                    return b.dataset.name.localeCompare(a.dataset.name);
+                case 'price_asc':
+                    return parseFloat(a.dataset.price) - parseFloat(b.dataset.price);
+                case 'price_desc':
+                    return parseFloat(b.dataset.price) - parseFloat(a.dataset.price);
+                default:
+                    return parseInt(a.dataset.id) - parseInt(b.dataset.id);
+            }
+        });
+        
+        // Update table
+        updateProductsTable(filteredRows);
+    }
+
+    function updateProductsTable(rows) {
+        productsTableBody.innerHTML = '';
+        if (rows.length === 0) {
+            productsTableBody.innerHTML = `
+                <tr class="empty-row">
+                    <td colspan="7">
+                        <div class="empty-state">
+                            <i class="fas fa-search"></i>
+                            <h3>No Products Match Your Filters</h3>
+                            <p>Try adjusting your filter criteria</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        } else {
+            rows.forEach(row => productsTableBody.appendChild(row));
+        }
+    }
+
+    // Initialize filters on page load
+    applyProductFilters();
+});
+
 // Make product rows clickable
 document.addEventListener('DOMContentLoaded', function() {
     const clickableRows = document.querySelectorAll('.clickable-row');

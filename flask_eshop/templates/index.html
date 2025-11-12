@@ -8,50 +8,6 @@
     <p>Discover amazing products at great prices</p>
 </div>
 
-<!-- Search and Filter Section -->
-<div class="search-filter-section" style="margin-bottom: 30px;">
-    <div class="search-box" style="max-width: 500px; margin: 0 auto 20px;">
-        <form action="{{ url_for('search') }}" method="GET" style="display: flex; gap: 10px;">
-            <input type="text" name="q" value="{{ search_query or '' }}" 
-                   placeholder="Search products..." 
-                   style="flex: 1; padding: 12px 16px; border: 2px solid var(--border-color); border-radius: var(--radius);">
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-search"></i> Search
-            </button>
-        </form>
-    </div>
-    
-    <!-- Stock Filter -->
-    <div class="stock-filter" style="text-align: center; margin-bottom: 20px;">
-        <div class="filter-buttons" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
-            <a href="{{ url_for('home', stock='all') }}" class="btn btn-sm {{ 'btn-primary' if request.args.get('stock', 'all') == 'all' else 'btn-outline' }}">
-                All Products
-            </a>
-            <a href="{{ url_for('home', stock='in_stock') }}" class="btn btn-sm {{ 'btn-primary' if request.args.get('stock') == 'in_stock' else 'btn-outline' }}">
-                In Stock
-            </a>
-            <a href="{{ url_for('home', stock='out_of_stock') }}" class="btn btn-sm {{ 'btn-primary' if request.args.get('stock') == 'out_of_stock' else 'btn-outline' }}">
-                Out of Stock
-            </a>
-        </div>
-    </div>
-    
-    {% if categories %}
-    <div class="category-filters" style="text-align: center;">
-        <div class="filter-buttons" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
-            <a href="{{ url_for('home') }}" class="btn btn-sm {{ 'btn-primary' if not category else 'btn-outline' }}">
-                All Categories
-            </a>
-            {% for cat in categories %}
-            <a href="{{ url_for('home', category=cat) }}" class="btn btn-sm {{ 'btn-primary' if category == cat else 'btn-outline' }}">
-                {{ cat }}
-            </a>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-</div>
-
 <!-- Products Grid -->
 {% if products %}
     <div class="products-grid">
@@ -63,51 +19,48 @@
                 </div>
                 {% endif %}
                 
-                <div class="product-image">
-                    <img src="{{ get_image_url(product.image_url) }}" alt="{{ product.name }}">
-                </div>
-                <div class="product-info">
-                    <h3>{{ product.name }}</h3>
-                    <p class="price">${{ "%.2f"|format(product.price) }}</p>
-                    <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 15px;">
-                        {{ product.description|truncate(100) }}
-                    </p>
-                    
-                    <!-- Stock Status -->
-                    <div class="stock-info" style="margin-bottom: 15px;">
-                        {% if product.stock_quantity == 0 %}
-                            <span style="color: #ef4444; font-size: 0.9rem;">
-                                <i class="fas fa-times-circle"></i> Out of Stock
-                            </span>
-                        {% elif product.stock_quantity < 10 %}
-                            <span style="color: #f59e0b; font-size: 0.9rem;">
-                                <i class="fas fa-exclamation-triangle"></i> Only {{ product.stock_quantity }} left!
-                            </span>
-                        {% else %}
-                            <span style="color: #10b981; font-size: 0.9rem;">
-                                <i class="fas fa-check-circle"></i> In Stock ({{ product.stock_quantity }} available)
-                            </span>
-                        {% endif %}
+                <!-- Clickable product content -->
+                <a href="{{ url_for('product_detail', product_id=product.product_id) }}" class="product-content-link">
+                    <div class="product-image">
+                        <img src="{{ get_image_url(product.image_url) }}" alt="{{ product.name }}">
                     </div>
-                    
-                    <div class="product-actions">
-                        <a href="{{ url_for('product_detail', product_id=product.product_id) }}" class="btn btn-outline">
-                            <i class="fas fa-eye"></i> View Details
-                        </a>
-                        {% if product.stock_quantity > 0 %}
-                        <form action="{{ url_for('add_to_cart') }}" method="post" class="add-to-cart-form" style="margin: 0;">
-                            <input type="hidden" name="product_id" value="{{ product.product_id }}">
-                            <input type="hidden" name="quantity" value="1">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-cart-plus"></i> Add to Cart
-                            </button>
-                        </form>
-                        {% else %}
-                        <button class="btn btn-secondary" disabled style="cursor: not-allowed; opacity: 0.6;">
-                            <i class="fas fa-cart-plus"></i> Out of Stock
+                    <div class="product-info">
+                        <h3>{{ product.name }}</h3>
+                        <p class="price">${{ "%.2f"|format(product.price) }}</p>
+                        <p class="product-description">
+                            {{ product.description|truncate(100) }}
+                        </p>
+                        
+                        <!-- Stock Status -->
+                        <div class="stock-info">
+                            {% if product.stock_quantity == 0 %}
+                                <span class="stock-out">
+                                    <i class="fas fa-times-circle"></i> Out of Stock
+                                </span>
+                            {% elif product.stock_quantity < 10 %}
+                                <span class="stock-low">
+                                    <i class="fas fa-exclamation-triangle"></i> Only {{ product.stock_quantity }} left!
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </a>
+                
+                <!-- Add to Cart Button (separate from the clickable content) -->
+                <div class="product-actions">
+                    {% if product.stock_quantity > 0 %}
+                    <form action="{{ url_for('add_to_cart') }}" method="post" class="add-to-cart-form">
+                        <input type="hidden" name="product_id" value="{{ product.product_id }}">
+                        <input type="hidden" name="quantity" value="1">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-cart-plus"></i> Add to Cart
                         </button>
-                        {% endif %}
-                    </div>
+                    </form>
+                    {% else %}
+                    <button class="btn btn-secondary" disabled>
+                        <i class="fas fa-cart-plus"></i> Out of Stock
+                    </button>
+                    {% endif %}
                 </div>
             </div>
         {% endfor %}
@@ -115,14 +68,14 @@
 
     <!-- Pagination -->
     {% if total_pages > 1 %}
-    <div class="pagination" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 40px;">
+    <div class="pagination">
         {% if page > 1 %}
         <a href="{{ url_for('home', page=page-1, q=search_query, category=category, stock=request.args.get('stock', 'all')) }}" class="btn btn-outline">
             <i class="fas fa-chevron-left"></i> Previous
         </a>
         {% endif %}
         
-        <span style="color: var(--text-light);">
+        <span class="pagination-info">
             Page {{ page }} of {{ total_pages }} ({{ total }} products)
         </span>
         
@@ -147,6 +100,37 @@
 {% endif %}
 
 <style>
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.product-card {
+    position: relative;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.product-content-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    flex-grow: 1;
+}
+
 .product-card.out-of-stock {
     opacity: 0.8;
     position: relative;
@@ -178,15 +162,140 @@
     animation: pulse 2s infinite;
 }
 
-@keyframes pulse {
-    0% { opacity: 0.8; }
-    50% { opacity: 1; }
-    100% { opacity: 0.8; }
+.product-image {
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8f8f8;
+}
+
+.product-image img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.product-info {
+    padding: 15px;
+    flex-grow: 1;
+}
+
+.product-info h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.2rem;
+    color: var(--text-dark);
+}
+
+.price {
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    margin: 10px 0;
+}
+
+.product-description {
+    color: var(--text-light);
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+}
+
+.stock-info {
+    margin-bottom: 15px;
+}
+
+.stock-out {
+    color: #ef4444;
+    font-size: 0.9rem;
+}
+
+.stock-low {
+    color: #f59e0b;
+    font-size: 0.9rem;
+}
+
+.product-actions {
+    padding: 0 15px 15px 15px;
+    margin-top: auto;
+}
+
+.add-to-cart-form {
+    margin: 0;
+}
+
+.btn {
+    display: inline-block;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    width: 100%;
+    text-align: center;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-dark);
+}
+
+.btn-outline {
+    background-color: transparent;
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-outline:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
 }
 
 .btn:disabled {
     cursor: not-allowed;
     opacity: 0.6;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 40px;
+}
+
+.pagination-info {
+    color: var(--text-light);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-light);
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 20px;
+    color: #ccc;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.8; }
+    50% { opacity: 1; }
+    100% { opacity: 0.8; }
 }
 </style>
 {% endblock %}

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, g, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, g, jsonify, send_from_directory
 import sqlite3
 import bcrypt
 import os
@@ -327,6 +327,17 @@ def init_db():
     conn.commit()
     conn.close()
     print("Database initialized successfully!")
+
+# Favicon route to prevent 404 errors
+@app.route('/favicon.ico')
+def favicon():
+    try:
+        return send_from_directory(os.path.join(app.root_path, 'static', 'images'),
+                                 'favicon.ico', 
+                                 mimetype='image/vnd.microsoft.icon')
+    except:
+        # If favicon doesn't exist, return empty response
+        return '', 204
     
 @app.route("/")
 def home():
@@ -828,7 +839,7 @@ def user_orders():
     try:
         with get_cursor() as cur:
             if session['role'] == 'admin':
-                # Admin can see all orders
+                # Admin sees all orders with customer info
                 cur.execute("""
                     SELECT o.*, 
                            u.username, 
@@ -841,6 +852,8 @@ def user_orders():
                     GROUP BY o.order_id
                     ORDER BY o.created_at DESC
                 """)
+                orders = cur.fetchall()
+                return render_template('admin_orders.html', orders=orders)
             else:
                 # Regular users only see their own orders
                 cur.execute("""
@@ -853,13 +866,15 @@ def user_orders():
                     GROUP BY o.order_id
                     ORDER BY o.created_at DESC
                 """, (session['user_id'],))
-            
-            orders = cur.fetchall()
-        
-        return render_template('orders.html', orders=orders)
+                orders = cur.fetchall()
+                return render_template('user_orders.html', orders=orders)
     except Exception as e:
         flash(f"Error loading orders: {str(e)}", 'danger')
-        return render_template('orders.html', orders=[])
+        # Return appropriate template based on role
+        if session.get('role') == 'admin':
+            return render_template('admin_orders.html', orders=[])
+        else:
+            return render_template('user_orders.html', orders=[])
 
 
 @app.route('/admin/products')
@@ -1073,6 +1088,11 @@ def internal_error(error):
 def too_large(error):
     flash('File too large. Maximum size is 16MB.', 'danger')
     return redirect(request.referrer or url_for('home'))
+
+@app.errorhandler(Exception)
+def handle_exception(error):
+    flash('An unexpected error occurred. Please try again.', 'danger')
+    return render_template('500.html'), 500
 
 if __name__ == '__main__':
     # Initialize database if it doesn't exist
