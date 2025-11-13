@@ -1,1 +1,1 @@
-v2 but looks way better and has new animations ! Some things still need rearrangement.
+Fixed console errors , fixed error handling ,added ico seperated the order handling for users and admins , changed products to be inspected when clicked uppon and fixed the order css .

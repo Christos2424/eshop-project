@@ -27,11 +27,13 @@
                     </a>
                     
                     <!-- Orders link for regular users only (not admins) -->
-                    {% if 'user_id' in session and session.role != 'admin' %}
-                    <a href="{{ url_for('user_orders') }}" class="nav-link">
-                        <i class="fas fa-receipt"></i>
-                        <span>My Orders</span>
-                    </a>
+                    {% if 'user_id' in session %}
+                        {% if 'user_id' in session and session.role != 'admin' %}
+                        <a href="{{ url_for('user_orders') }}" class="nav-link">
+                            <i class="fas fa-receipt"></i>
+                            <span>My Orders</span>
+                        </a>                       
+                        {% endif %}
                     {% endif %}
                     
                     <a href="{{ url_for('view_cart') }}" class="nav-link cart-link">

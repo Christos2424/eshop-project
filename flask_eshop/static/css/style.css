@@ -23,7 +23,7 @@ body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     line-height: 1.6;
     color: var(--text-dark);
-    background-color: #5bda81;
+    background-color: #c3c9a2;
 }
 
 .container {
@@ -727,4 +727,22 @@ body {
 .btn:disabled {
     cursor: not-allowed;
     opacity: 0.6;
+}
+
+/* Add to your existing CSS */
+.empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--text-light);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    color: #cbd5e1;
+}
+
+.empty-state h3 {
+    margin-bottom: 1rem;
+    color: var(--text-dark);
 }
