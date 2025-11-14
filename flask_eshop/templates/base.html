@@ -11,74 +11,82 @@
 <body>
     <!-- Modern Header -->
     <header class="main-header">
-        <div class="container">
-            <div class="header-content">
-                <div class="logo">
-                    <a href="{{ url_for('home') }}">
-                        <i class="fas fa-store"></i>
-                        <span>eShop</span>
+        <div class="header-content">
+            <div class="logo">
+                <a href="{{ url_for('home') }}">
+                    <i class="fas fa-store"></i>
+                    <span>eShop</span>
+                </a>
+            </div>
+            
+            <!-- Search Bar in Header -->
+            <form method="get" action="{{ url_for('home') }}" class="header-search-form">
+                <div class="header-search-group">
+                    <input type="text" name="q" placeholder="Search products..." class="header-search-input" value="{{ request.args.get('q', '') }}">
+                    <button type="submit" class="header-search-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Categories Dropdown -->
+            <div class="categories-dropdown">
+                <a href="{{ url_for('home') }}" class="categories-link">
+                    <i class="fas fa-list"></i>
+                    <span>Categories</span>
+                    <i class="fas fa-chevron-down"></i>
+                </a>
+                <div class="categories-menu">
+                    <a href="{{ url_for('home') }}" class="category-item">All Categories</a>
+                    <!-- Categories will be dynamically populated from database -->
+                    <div id="categories-list"></div>
+                </div>
+            </div>
+            
+            <nav class="main-nav">
+                <a href="{{ url_for('view_cart') }}" class="nav-link cart-link">
+                    <i class="fas fa-shopping-cart"></i>
+                    {% if session.cart %}
+                    <!-- Calculate total quantity instead of counting distinct products -->
+                    <span class="cart-count">
+                        {% set total_quantity = session.cart.values() | sum %}
+                        {{ total_quantity }}
+                    </span>
+                    {% endif %}
+                </a>
+                
+                {% if 'user_id' in session %}
+                <div class="user-menu">
+                    {% if session['role'] != 'admin' %}
+                    <a href="{{ url_for('user_orders') }}" class="nav-link">
+                        <i class="fas fa-receipt"></i>
+                        <span>My Orders</span>
+                    </a>
+                    {% endif %}
+                    {% if session['role'] == 'admin' %}
+                        <a href="{{ url_for('admin_products') }}" class="nav-link">
+                            <i class="fas fa-cog"></i>
+                            <span>Admin</span>
+                        </a>
+                    {% endif %}
+                    <a href="{{ url_for('logout') }}" class="nav-link">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
                     </a>
                 </div>
-                
-                <nav class="main-nav">
-                    <a href="{{ url_for('home') }}" class="nav-link">
-                        <i class="fas fa-home"></i>
-                        <span>Home</span>
+                {% else %}
+                <div class="auth-links">
+                    <a href="{{ url_for('login') }}" class="nav-link">
+                        <i class="fas fa-sign-in-alt"></i>
+                        <span>Login</span>
                     </a>
-                    
-                    <!-- Orders link for regular users only (not admins) -->
-                    {% if 'user_id' in session %}
-                        {% if 'user_id' in session and session.role != 'admin' %}
-                        <a href="{{ url_for('user_orders') }}" class="nav-link">
-                            <i class="fas fa-receipt"></i>
-                            <span>My Orders</span>
-                        </a>                       
-                        {% endif %}
-                    {% endif %}
-                    
-                    <a href="{{ url_for('view_cart') }}" class="nav-link cart-link">
-                        <i class="fas fa-shopping-cart"></i>
-                        <span>Cart</span>
-                        {% if session.cart %}
-                        <!-- Calculate total quantity instead of counting distinct products -->
-                        <span class="cart-count">
-                            {% set total_quantity = session.cart.values() | sum %}
-                            {{ total_quantity }}
-                        </span>
-                        {% endif %}
+                    <a href="{{ url_for('register') }}" class="nav-link register-btn">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Register</span>
                     </a>
-                    
-                    {% if 'user_id' in session %}
-                    <div class="user-menu">
-                        <span class="welcome-msg">
-                            <i class="fas fa-user"></i>
-                            Hello, {{ session['username'] }}
-                        </span>
-                        {% if session['role'] == 'admin' %}
-                            <a href="{{ url_for('admin_products') }}" class="nav-link">
-                                <i class="fas fa-cog"></i>
-                                <span>Admin</span>
-                            </a>
-                        {% endif %}
-                        <a href="{{ url_for('logout') }}" class="nav-link">
-                            <i class="fas fa-sign-out-alt"></i>
-                            <span>Logout</span>
-                        </a>
-                    </div>
-                    {% else %}
-                    <div class="auth-links">
-                        <a href="{{ url_for('login') }}" class="nav-link">
-                            <i class="fas fa-sign-in-alt"></i>
-                            <span>Login</span>
-                        </a>
-                        <a href="{{ url_for('register') }}" class="nav-link register-btn">
-                            <i class="fas fa-user-plus"></i>
-                            <span>Register</span>
-                        </a>
-                    </div>
-                    {% endif %}
-                </nav>
-            </div>
+                </div>
+                {% endif %}
+            </nav>
         </div>
     </header>
 
@@ -139,5 +147,23 @@
     </footer>
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    
+    <script>
+    // Populate categories in the dropdown on all pages
+    document.addEventListener('DOMContentLoaded', function() {
+        const categories = {{ global_categories | tojson }};
+        const categoriesList = document.getElementById('categories-list');
+        
+        if (categoriesList && categories) {
+            categories.forEach(function(category) {
+                const link = document.createElement('a');
+                link.href = `{{ url_for('home') }}?category=${encodeURIComponent(category)}`;
+                link.className = 'category-item';
+                link.textContent = category;
+                categoriesList.appendChild(link);
+            });
+        }
+    });
+    </script>
 </body>
 </html>

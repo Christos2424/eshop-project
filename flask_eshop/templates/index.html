@@ -57,9 +57,11 @@
                         </button>
                     </form>
                     {% else %}
-                    <button class="btn btn-secondary" disabled>
-                        <i class="fas fa-cart-plus"></i> Out of Stock
-                    </button>
+                    <form class="add-to-cart-form">
+                        <button class="btn btn-secondary" disabled type="button">
+                            <i class="fas fa-cart-plus"></i> Out of Stock
+                        </button>
+                    </form>
                     {% endif %}
                 </div>
             </div>
@@ -70,7 +72,7 @@
     {% if total_pages > 1 %}
     <div class="pagination">
         {% if page > 1 %}
-        <a href="{{ url_for('home', page=page-1, q=search_query, category=category, stock=request.args.get('stock', 'all')) }}" class="btn btn-outline">
+        <a href="{{ url_for('home', page=page-1, q=search_query, category=category, stock=stock_filter, sort=sort_by, min_price=min_price, max_price=max_price) }}" class="btn btn-outline">
             <i class="fas fa-chevron-left"></i> Previous
         </a>
         {% endif %}
@@ -80,7 +82,7 @@
         </span>
         
         {% if page < total_pages %}
-        <a href="{{ url_for('home', page=page+1, q=search_query, category=category, stock=request.args.get('stock', 'all')) }}" class="btn btn-outline">
+        <a href="{{ url_for('home', page=page+1, q=search_query, category=category, stock=stock_filter, sort=sort_by, min_price=min_price, max_price=max_price) }}" class="btn btn-outline">
             Next <i class="fas fa-chevron-right"></i>
         </a>
         {% endif %}
@@ -226,7 +228,7 @@
 }
 
 .btn {
-    display: inline-block;
+    display: block;
     padding: 8px 16px;
     border: none;
     border-radius: 4px;
@@ -236,6 +238,7 @@
     transition: all 0.2s ease;
     width: 100%;
     text-align: center;
+    font-weight: 500;
 }
 
 .btn-primary {
