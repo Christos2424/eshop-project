@@ -539,11 +539,12 @@ def product_detail(product_id):
 
 @app.route('/add_to_cart', methods=['POST'])
 def add_to_cart():
-    # No login required to add to cart
     product_id = request.form.get('product_id')
     quantity = int(request.form.get('quantity', 1))
     
     if not product_id:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': 'Invalid product'})
         flash('Invalid product', 'danger')
         return redirect(request.referrer or url_for('home'))
     
@@ -554,19 +555,25 @@ def add_to_cart():
             product = cur.fetchone()
             
             if not product:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'success': False, 'message': 'Product not found'})
                 flash('Product not found', 'danger')
                 return redirect(request.referrer or url_for('home'))
             
-            # Allow adding to cart only if product has stock
+            # Check stock
             if product['stock_quantity'] < quantity:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'success': False, 'message': f"Only {product['stock_quantity']} units available"})
                 flash(f"Only {product['stock_quantity']} units of {product['name']} available", 'warning')
                 return redirect(request.referrer or url_for('home'))
             
-            # Prevent adding out-of-stock products to cart
             if product['stock_quantity'] == 0:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'success': False, 'message': f"{product['name']} is out of stock"})
                 flash(f"{product['name']} is currently out of stock", 'warning')
                 return redirect(request.referrer or url_for('home'))
         
+        # Update cart
         if 'cart' not in session:
             session["cart"] = {}
         
@@ -574,8 +581,9 @@ def add_to_cart():
         current_quantity = cart.get(str(product_id), 0)
         new_quantity = current_quantity + quantity
         
-        # Check total doesn't exceed stock
         if new_quantity > product['stock_quantity']:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'message': f"Cannot add more than {product['stock_quantity']} units"})
             flash(f"Cannot add more than {product['stock_quantity']} units of {product['name']}", 'warning')
             return redirect(request.referrer or url_for('home'))
         
@@ -583,10 +591,22 @@ def add_to_cart():
         session["cart"] = cart
         session.modified = True
         
+        # Calculate total cart count for response
+        total_cart_count = sum(cart.values())
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                'success': True,
+                'message': f"{product['name']} added to cart!",
+                'cart_count': total_cart_count
+            })
+        
         flash("Item added to cart!", "success")
         return redirect(request.referrer or url_for('home'))
         
     except Exception as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': f"Error: {str(e)}"})
         flash(f"Error adding to cart: {str(e)}", 'danger')
         return redirect(request.referrer or url_for('home'))
 

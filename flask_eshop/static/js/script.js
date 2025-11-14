@@ -1,68 +1,128 @@
 // Modern interactive features
 document.addEventListener('DOMContentLoaded', function() {
-    // Add to cart animations
+    // Add to cart with AJAX
     const addToCartForms = document.querySelectorAll('.add-to-cart-form');
     
     addToCartForms.forEach(form => {
         form.addEventListener('submit', function(e) {
+            e.preventDefault(); // Prevent default form submission
+            
             const button = this.querySelector('button[type="submit"]');
             const originalText = button.innerHTML;
             
             button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
             button.disabled = true;
             
-            // Get the product ID and quantity to update cart count
-            const productId = this.querySelector('input[name="product_id"]').value;
-            const quantity = parseInt(this.querySelector('input[name="quantity"]').value) || 1;
+            // Get form data
+            const formData = new FormData(this);
             
-            setTimeout(() => {
+            // Send AJAX request
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest' // Identify as AJAX request
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update cart count
+                    updateCartCount(data.cart_count);
+                    
+                    // Show success message
+                    showFlashMessage(data.message, 'success');
+                    
+                    // Optional: Add visual feedback on the button
+                    button.innerHTML = '<i class="fas fa-check"></i> Added!';
+                    setTimeout(() => {
+                        button.innerHTML = originalText;
+                        button.disabled = false;
+                    }, 1500);
+                } else {
+                    // Show error message
+                    showFlashMessage(data.message, 'danger');
+                    button.innerHTML = originalText;
+                    button.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showFlashMessage('An error occurred. Please try again.', 'danger');
                 button.innerHTML = originalText;
                 button.disabled = false;
-                
-                // Update cart count dynamically
-                updateCartCount(quantity);
-            }, 1000);
+            });
         });
     });
     
+    // Function to show flash messages dynamically
+    function showFlashMessage(message, category) {
+        // Remove any existing dynamic flash messages
+        document.querySelectorAll('.flash-dynamic').forEach(flash => flash.remove());
+        
+        // Create new flash message
+        const flashMessage = document.createElement('div');
+        flashMessage.className = `flash flash-${category} flash-dynamic`;
+        flashMessage.innerHTML = `
+            <i class="fas fa-${getFlashIcon(category)}"></i>
+            ${message}
+        `;
+        
+        // Add styles for dynamic flash messages
+        flashMessage.style.position = 'fixed';
+        flashMessage.style.top = '100px';
+        flashMessage.style.right = '20px';
+        flashMessage.style.zIndex = '9999';
+        flashMessage.style.maxWidth = '300px';
+        flashMessage.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+        
+        // Add to page
+        document.body.appendChild(flashMessage);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            flashMessage.style.opacity = '0';
+            flashMessage.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => flashMessage.remove(), 300);
+        }, 3000);
+    }
+    
+    function getFlashIcon(category) {
+        switch(category) {
+            case 'success': return 'check-circle';
+            case 'danger': return 'exclamation-circle';
+            case 'warning': return 'exclamation-triangle';
+            default: return 'info-circle';
+        }
+    }
+    
     // Function to update cart count dynamically
-    function updateCartCount(quantityToAdd = 0) {
+    function updateCartCount(newCount) {
         const cartCountElement = document.querySelector('.cart-count');
         if (cartCountElement) {
-            const currentCount = parseInt(cartCountElement.textContent) || 0;
-            const newCount = currentCount + quantityToAdd;
             cartCountElement.textContent = newCount;
             
-            // Show/hide cart count based on new count
             if (newCount > 0) {
                 cartCountElement.style.display = 'flex';
+                
+                // Add animation
+                cartCountElement.style.transform = 'scale(1.2)';
+                setTimeout(() => {
+                    cartCountElement.style.transform = 'scale(1)';
+                    cartCountElement.style.transition = 'transform 0.3s ease';
+                }, 300);
             } else {
                 cartCountElement.style.display = 'none';
             }
-        } else if (quantityToAdd > 0) {
+        } else if (newCount > 0) {
             // If cart count doesn't exist but we're adding items, create it
             const cartLink = document.querySelector('.cart-link');
             if (cartLink) {
                 const newCartCount = document.createElement('span');
                 newCartCount.className = 'cart-count';
-                newCartCount.textContent = quantityToAdd;
+                newCartCount.textContent = newCount;
                 newCartCount.style.display = 'flex';
                 cartLink.appendChild(newCartCount);
-            }
-        }
-    }
-    
-    // Update cart count on page load
-    updateCartCountOnLoad();
-    
-    function updateCartCountOnLoad() {
-        const cartCountElement = document.querySelector('.cart-count');
-        if (cartCountElement) {
-            const currentCount = parseInt(cartCountElement.textContent) || 0;
-            if (currentCount > 0) {
-                cartCountElement.style.display = 'flex';
-            } else {
-                cartCountElement.style.display = 'none';
             }
         }
     }
