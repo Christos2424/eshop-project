@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Home - eShop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-store"></i> Welcome to eShop</h1>
+    <p>Discover amazing products at great prices</p>
+</div>
+
+<!-- Products Grid -->
+{% if products %}
+    <div class="products-grid">
+        {% for product in products %}
+            <div class="product-card {{ 'out-of-stock' if product.stock_quantity == 0 }}">
+                {% if product.stock_quantity == 0 %}
+                <div class="out-of-stock-overlay">
+                    <i class="fas fa-times-circle"></i> Out of Stock
+                </div>
+                {% endif %}
+                
+                <!-- Clickable product content -->
+                <a href="{{ url_for('product_detail', product_id=product.product_id) }}" class="product-content-link">
+                    <div class="product-image">
+                        <img src="{{ get_image_url(product.image_url) }}" alt="{{ product.name }}">
+                    </div>
+                    <div class="product-info">
+                        <h3>{{ product.name }}</h3>
+                        <p class="price">${{ "%.2f"|format(product.price) }}</p>
+                        <p class="product-description">
+                            {{ product.description|truncate(100) }}
+                        </p>
+                        
+                        <!-- Stock Status -->
+                        <div class="stock-info">
+                            {% if product.stock_quantity == 0 %}
+                                <span class="stock-out">
+                                    <i class="fas fa-times-circle"></i> Out of Stock
+                                </span>
+                            {% elif product.stock_quantity < 10 %}
+                                <span class="stock-low">
+                                    <i class="fas fa-exclamation-triangle"></i> Only {{ product.stock_quantity }} left!
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </a>
+                
+                <!-- Add to Cart Button -->
+                <div class="product-actions">
+                    {% if product.stock_quantity > 0 %}
+                    <form action="{{ url_for('add_to_cart') }}" method="post" class="add-to-cart-form">
+                        <input type="hidden" name="product_id" value="{{ product.product_id }}">
+                        <input type="hidden" name="quantity" value="1">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-cart-plus"></i> Add to Cart
+                        </button>
+                    </form>
+                    {% else %}
+                    <form class="add-to-cart-form">
+                        <button class="btn btn-secondary" disabled type="button">
+                            <i class="fas fa-cart-plus"></i> Out of Stock
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="{{ url_for('home', page=page-1, q=search_query, category=category, stock=stock_filter, sort=sort_by, min_price=min_price, max_price=max_price) }}" class="btn btn-outline">
+            <i class="fas fa-chevron-left"></i> Previous
+        </a>
+        {% endif %}
+        
+        <span class="pagination-info">
+            Page {{ page }} of {{ total_pages }} ({{ total }} products)
+        </span>
+        
+        {% if page < total_pages %}
+        <a href="{{ url_for('home', page=page+1, q=search_query, category=category, stock=stock_filter, sort=sort_by, min_price=min_price, max_price=max_price) }}" class="btn btn-outline">
+            Next <i class="fas fa-chevron-right"></i>
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+{% else %}
+    <div class="empty-state">
+        <i class="fas fa-search"></i>
+        <h3>No Products Found</h3>
+        <p>{% if search_query %}No products match your search "{{ search_query }}"{% else %}No products available at the moment.{% endif %}</p>
+        {% if search_query or category or request.args.get('stock') %}
+        <a href="{{ url_for('home') }}" class="btn btn-primary">
+            <i class="fas fa-undo"></i> View All Products
+        </a>
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock %}

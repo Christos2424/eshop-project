@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Product - eShop{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-edit"></i> Edit Product</h1>
+    <p>Update product information</p>
+</div>
+
+<div class="form-container">
+    <form method="POST" action="{{ url_for('edit_product', product_id=product.product_id) }}" class="product-form" enctype="multipart/form-data">
+        <div class="form-section">
+            <h3><i class="fas fa-info-circle"></i> Basic Information</h3>
+            
+            <div class="form-group">
+                <label for="name">Product Name *</label>
+                <input type="text" id="name" name="name" value="{{ product.name }}" required class="form-control">
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Description *</label>
+                <textarea id="description" name="description" rows="4" required class="form-control">{{ product.description }}</textarea>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="price">Price ($) *</label>
+                    <input type="number" id="price" name="price" step="0.01" min="0" value="{{ "%.2f"|format(product.price) }}" required class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label for="stock">Stock Quantity *</label>
+                    <!-- CHANGED: min="0" instead of min="1" -->
+                    <input type="number" id="stock" name="stock" min="0" value="{{ product.stock_quantity }}" required class="form-control">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="category">Category</label>
+                <input type="text" id="category" name="category" value="{{ product.category }}" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3><i class="fas fa-image"></i> Product Image</h3>
+            
+            {% if product.image_url %}
+            <div class="current-image">
+                <h4>Current Image</h4>
+                <div class="image-preview">
+                    <img src="{{ url_for('static', filename=product.image_url) if product.image_url and product.image_url.startswith('uploads/') else product.image_url }}" 
+                         alt="{{ product.name }}" class="product-image-preview">
+                    <div class="image-actions">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="remove_image" value="1">
+                            <span class="checkmark"></span>
+                            Remove current image
+                        </label>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="image-upload-options">
+                <div class="upload-option">
+                    <h4><i class="fas fa-upload"></i> Upload New Image</h4>
+                    <div class="form-group">
+                        <label for="image_file">Choose Image File</label>
+                        <input type="file" id="image_file" name="image_file" accept="image/*" class="form-control">
+                        <small class="form-text">Supported formats: PNG, JPG, JPEG, GIF, WEBP (Max 16MB)</small>
+                    </div>
+                </div>
+                
+                <div class="option-divider">
+                    <span>OR</span>
+                </div>
+                
+                <div class="upload-option">
+                    <h4><i class="fas fa-link"></i> Image URL</h4>
+                    <div class="form-group">
+                        <label for="image_url">Image URL</label>
+                        <input type="url" id="image_url" name="image_url" class="form-control" 
+                               placeholder="https://example.com/image.jpg" 
+                               value="{{ product.image_url if product.image_url and not product.image_url.startswith('uploads/') else '' }}">
+                        <small class="form-text">Enter a direct link to the product image</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-help">
+                <p><strong>Note:</strong> Uploaded files take priority over URLs. Leave both blank to keep current image.</p>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="fas fa-save"></i> Update Product
+            </button>
+            <a href="{{ url_for('admin_products') }}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+
+{% endblock %}
