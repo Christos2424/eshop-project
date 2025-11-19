@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Your Cart - eShop{% endblock %}
+
+{% block content %}
+
+
+<div class="cart-page">
+    <div class="cart-header">
+        <h1><i class="fas fa-shopping-cart"></i> Your Shopping Cart</h1>
+        <!-- Added total items display -->
+        <p style="color: var(--text-light);">
+            Total items: 
+            {% if session.cart %}
+                {{ session.cart.values() | sum }}
+            {% else %}
+                0
+            {% endif %}
+        </p>
+    </div>
+    
+    {% if cart_items %}
+        <div class="cart-content">
+            <!-- Promo Code Section -->
+            <div class="cart-promo">
+                <h4><i class="fas fa-tag"></i> Have a promo code?</h4>
+                <div class="promo-code">
+                    <input type="text" class="promo-input" placeholder="Enter promo code">
+                    <button class="btn btn-outline">Apply</button>
+                </div>
+            </div>
+
+            <table class="cart-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th>Quantity</th>
+                        <th>Total</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in cart_items %}
+                        {% if item.product %}
+                        <tr>
+                            <td>
+                                <div class="cart-product-info">
+                                    <img src="{{ get_image_url(item.product.image_url) }}" 
+                                         alt="{{ item.product.name }}" 
+                                         class="cart-product-image">
+                                    <div class="cart-product-details">
+                                        <div class="cart-product-name">{{ item.product.name }}</div>
+                                        <div class="cart-product-category">{{ item.product.category or 'General' }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="item-price">${{ "%.2f"|format(item.product.price) }}</td>
+                            <td>
+                                <div class="quantity-controls">
+                                    <form action="{{ url_for('update_cart') }}" method="post" style="display: inline;">
+                                        <input type="hidden" name="product_id" value="{{ item.product.product_id }}">
+                                        <input type="hidden" name="quantity" value="{{ item.quantity - 1 }}">
+                                        <button type="submit" class="quantity-btn" {{ 'disabled' if item.quantity <= 1 }}>
+                                            <i class="fas fa-minus"></i>
+                                        </button>
+                                    </form>
+                                    <span class="quantity-display">{{ item.quantity }}</span>
+                                    <form action="{{ url_for('update_cart') }}" method="post" style="display: inline;">
+                                        <input type="hidden" name="product_id" value="{{ item.product.product_id }}">
+                                        <input type="hidden" name="quantity" value="{{ item.quantity + 1 }}">
+                                        <button type="submit" class="quantity-btn" {{ 'disabled' if item.quantity >= item.product.stock_quantity }}>
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                            <td class="item-total">${{ "%.2f"|format(item.total) }}</td>
+                            <td>
+                                <form action="{{ url_for('remove_from_cart') }}" method="post" class="remove-form" onsubmit="updateCartCountOnRemove({{ item.quantity }})">
+                                    <input type="hidden" name="product_id" value="{{ item.product.product_id }}">
+                                    <button type="submit" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-trash"></i> Remove
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <div class="cart-summary">
+                <div class="summary-row">
+                    <span>Subtotal:</span>
+                    <span>${{ "%.2f"|format(total) }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Shipping:</span>
+                    <span>${{ "0.00" if total >= 50 else "9.99" }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Tax:</span>
+                    <span>${{ "%.2f"|format(total * 0.08) }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Grand Total:</span>
+                    <span>${{ "%.2f"|format(total + (0 if total >= 50 else 9.99) + (total * 0.08)) }}</span>
+                </div>
+            </div>
+            
+            <div class="cart-actions">
+                <div class="cart-action-left">
+                    <a href="{{ url_for('home') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Continue Shopping
+                    </a>
+                </div>
+                
+                <div class="cart-action-right">
+                    {% if session.user_id %}
+                        <!-- User is logged in - show checkout button -->
+                        <form action="{{ url_for('checkout') }}" method="POST">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-credit-card"></i> Proceed to Checkout
+                            </button>
+                        </form>
+                    {% else %}
+                        <!-- User is not logged in - show login prompt -->
+                        <div class="checkout-login-prompt">
+                            <p>Please log in to complete your purchase</p>
+                            <a href="{{ url_for('login', next=url_for('view_cart')) }}" class="btn btn-primary">
+                                <i class="fas fa-sign-in-alt"></i> Log in to Checkout
+                            </a>
+                            <p class="register-prompt">Don't have an account? <a href="{{ url_for('register') }}">Register here</a></p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="empty-cart-state">
+            <i class="fas fa-shopping-cart"></i>
+            <h3>Your cart is empty</h3>
+            <p>Browse our products and add some items to your cart!</p>
+        </div>
+    {% endif %}
+</div>
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/cart.js') }}"></script>
+{% endblock %}
+
+{% endblock %}
