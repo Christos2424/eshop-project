@@ -589,17 +589,18 @@ def add_to_cart():
                 flash('Product not found', 'danger')
                 return redirect(request.referrer or url_for('home'))
             
-            # Check stock
-            if product['stock_quantity'] < quantity:
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return jsonify({'success': False, 'message': f"Only {product['stock_quantity']} units available"})
-                flash(f"Only {product['stock_quantity']} units of {product['name']} available", 'warning')
-                return redirect(request.referrer or url_for('home'))
-            
+            # FIXED: Check stock availability - fix the logic order
             if product['stock_quantity'] == 0:
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return jsonify({'success': False, 'message': f"{product['name']} is out of stock"})
                 flash(f"{product['name']} is currently out of stock", 'warning')
+                return redirect(request.referrer or url_for('home'))
+            
+            # Check if requested quantity exceeds available stock
+            if product['stock_quantity'] < quantity:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'success': False, 'message': f"Only {product['stock_quantity']} units available"})
+                flash(f"Only {product['stock_quantity']} units of {product['name']} available", 'warning')
                 return redirect(request.referrer or url_for('home'))
         
         # Update cart
@@ -610,6 +611,7 @@ def add_to_cart():
         current_quantity = cart.get(str(product_id), 0)
         new_quantity = current_quantity + quantity
         
+        # Final check to ensure we don't exceed stock
         if new_quantity > product['stock_quantity']:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'success': False, 'message': f"Cannot add more than {product['stock_quantity']} units"})

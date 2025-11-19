@@ -306,10 +306,6 @@ function initCartFunctionality() {
         form.addEventListener('submit', handleAddToCart);
     });
     
-    document.querySelectorAll('.quantity-btn').forEach(btn => {
-        btn.addEventListener('click', handleQuantityChange);
-    });
-    
     initCartQuantityControls();
 }
 
@@ -319,21 +315,14 @@ function handleAddToCart(e) {
     const form = e.target;
     const formData = new FormData(form);
     const productId = formData.get('product_id');
-    const quantity = formData.get('quantity') || 1;
-    
-    if (form.querySelector('button:disabled')) {
-        showToast('This product is out of stock', 'warning');
-        return;
-    }
+    const quantity = parseInt(formData.get('quantity') || 1);
     
     const submitBtn = form.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
-    const originalDisabled = submitBtn.disabled;
     
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
     submitBtn.disabled = true;
     
-    // Use the form's action attribute or fall back to APP_URLS
     const url = form.action || window.APP_URLS.add_to_cart;
     
     fetch(url, {
@@ -353,8 +342,13 @@ function handleAddToCart(e) {
         if (data.success) {
             updateCartCount(data.cart_count);
             showToast(data.message, 'success');
-            updateProductStockDisplay(productId, quantity);
             
+            // If we're on a product page, update the stock display
+            if (productId) {
+                updateProductStockDisplay(productId, quantity);
+            }
+            
+            // If we're on the cart page, reload to show updated cart
             if (window.location.pathname.includes('/cart')) {
                 setTimeout(() => {
                     window.location.reload();
@@ -362,25 +356,18 @@ function handleAddToCart(e) {
             }
         } else {
             showToast(data.message, 'error');
+            // Re-enable button on error
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
         }
     })
     .catch(error => {
         console.error('Error adding to cart:', error);
         showToast('Error adding item to cart. Please try again.', 'error');
-    })
-    .finally(() => {
+        // Re-enable button on error
+        submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
-        submitBtn.disabled = originalDisabled;
     });
-}
-
-function handleQuantityChange(e) {
-    const btn = e.currentTarget;
-    const form = btn.closest('form');
-    
-    if (form) {
-        form.submit();
-    }
 }
 
 function initCartQuantityControls() {
@@ -395,7 +382,8 @@ function initCartQuantityControls() {
 }
 
 function updateCartCount(count) {
-    const cartCountElement = document.querySelector('.cart-count');
+    // Update main cart count
+    let cartCountElement = document.querySelector('.cart-count');
     
     if (cartCountElement) {
         if (count > 0) {
@@ -406,11 +394,13 @@ function updateCartCount(count) {
         }
     }
     
+    // Also update any mobile cart count
     const mobileCartCount = document.querySelector('.mobile-cart-count');
     if (mobileCartCount) {
         mobileCartCount.textContent = count;
     }
     
+    // Dispatch event for other components
     window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count } }));
 }
 

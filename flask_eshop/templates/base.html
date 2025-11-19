@@ -62,14 +62,16 @@
                 </div>
                 
                 <!-- Cart -->
+                
                 <a href="{{ url_for('view_cart') }}" class="nav-link cart-link">
                     <i class="fas fa-shopping-cart"></i>
-                    {% if session.cart %}
-                    <span class="cart-count">
-                        {% set total_quantity = session.cart.values() | sum %}
-                        {{ total_quantity }}
+                    <span class="cart-count" style="{% if not session.cart or session.cart.values() | sum == 0 %}display: none;{% else %}display: flex;{% endif %}">
+                        {% if session.cart %}
+                            {{ session.cart.values() | sum }}
+                        {% else %}
+                            0
+                        {% endif %}
                     </span>
-                    {% endif %}
                 </a>
                 
                 <!-- User Menu -->
