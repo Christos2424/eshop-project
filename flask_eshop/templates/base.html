@@ -4,83 +4,137 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}eShop - Modern Online Shopping{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/header.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/utilities.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/products.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product-detail.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cart.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
     <!-- Modern Header -->
     <header class="main-header">
-        <div class="container">
-            <div class="header-content">
-                <div class="logo">
-                    <a href="{{ url_for('home') }}">
-                        <i class="fas fa-store"></i>
-                        <span>eShop</span>
-                    </a>
+        <div class="header-content">
+            <div class="logo">
+                <a href="{{ url_for('home') }}">
+                    <i class="fas fa-store"></i>
+                    <span>eShop</span>
+                </a>
+            </div>
+            
+            <!-- Search Bar with Integrated Categories Button -->
+            <div class="header-search-container">
+                <form method="get" action="{{ url_for('home') }}" class="header-search-form">
+                    <div class="header-search-group">
+                        <!-- Categories Button inside search bar -->
+                        <button type="button" class="categories-search-btn" id="categoriesToggle">
+                            <i class="fas fa-list"></i>
+                            <span>Categories</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        
+                        <input type="text" name="q" placeholder="Search products..." class="header-search-input" value="{{ request.args.get('q', '') }}">
+                        <button type="submit" class="header-search-btn">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <nav class="main-nav">
+                <!-- Language Selector -->
+                <div class="language-selector">
+                    <button class="language-btn">
+                        <i class="fas fa-globe"></i>
+                        <span>EN</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="language-menu">
+                        <button class="language-option" data-lang="en">English</button>
+                        <button class="language-option" data-lang="el">Ελληνικά</button>
+                        <button class="language-option" data-lang="de">Deutsch</button>
+                    </div>
                 </div>
                 
-                <nav class="main-nav">
-                    <a href="{{ url_for('home') }}" class="nav-link">
-                        <i class="fas fa-home"></i>
-                        <span>Home</span>
-                    </a>
-                    
-                    <!-- Orders link for regular users only (not admins) -->
-                    {% if 'user_id' in session %}
-                        {% if 'user_id' in session and session.role != 'admin' %}
-                        <a href="{{ url_for('user_orders') }}" class="nav-link">
-                            <i class="fas fa-receipt"></i>
-                            <span>My Orders</span>
-                        </a>                       
-                        {% endif %}
-                    {% endif %}
-                    
-                    <a href="{{ url_for('view_cart') }}" class="nav-link cart-link">
-                        <i class="fas fa-shopping-cart"></i>
-                        <span>Cart</span>
+                <!-- Cart -->
+                
+                <a href="{{ url_for('view_cart') }}" class="nav-link cart-link">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count" style="{% if not session.cart or session.cart.values() | sum == 0 %}display: none;{% else %}display: flex;{% endif %}">
                         {% if session.cart %}
-                        <!-- Calculate total quantity instead of counting distinct products -->
-                        <span class="cart-count">
-                            {% set total_quantity = session.cart.values() | sum %}
-                            {{ total_quantity }}
-                        </span>
+                            {{ session.cart.values() | sum }}
+                        {% else %}
+                            0
                         {% endif %}
-                    </a>
-                    
-                    {% if 'user_id' in session %}
-                    <div class="user-menu">
-                        <span class="welcome-msg">
-                            <i class="fas fa-user"></i>
-                            Hello, {{ session['username'] }}
-                        </span>
+                    </span>
+                </a>
+                
+                <!-- User Menu -->
+                {% if 'user_id' in session %}
+                <div class="user-dropdown">
+                    <button class="user-menu-btn" id="userMenuToggle">
+                        <i class="fas fa-user-circle"></i>
+                        <span>{{ session['username'] }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="user-dropdown-menu" id="userDropdown">
+                        {% if session['role'] != 'admin' %}
+                        <a href="{{ url_for('user_orders') }}" class="dropdown-item">
+                            <i class="fas fa-receipt"></i>
+                            My Orders
+                        </a>
+                        {% endif %}
                         {% if session['role'] == 'admin' %}
-                            <a href="{{ url_for('admin_products') }}" class="nav-link">
-                                <i class="fas fa-cog"></i>
-                                <span>Admin</span>
-                            </a>
+                        <a href="{{ url_for('admin_products') }}" class="dropdown-item">
+                            <i class="fas fa-cog"></i>
+                            Admin Panel
+                        </a>
                         {% endif %}
-                        <a href="{{ url_for('logout') }}" class="nav-link">
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('logout') }}" class="dropdown-item">
                             <i class="fas fa-sign-out-alt"></i>
-                            <span>Logout</span>
+                            Logout
                         </a>
                     </div>
-                    {% else %}
-                    <div class="auth-links">
-                        <a href="{{ url_for('login') }}" class="nav-link">
-                            <i class="fas fa-sign-in-alt"></i>
-                            <span>Login</span>
-                        </a>
-                        <a href="{{ url_for('register') }}" class="nav-link register-btn">
-                            <i class="fas fa-user-plus"></i>
-                            <span>Register</span>
-                        </a>
-                    </div>
-                    {% endif %}
-                </nav>
-            </div>
+                </div>
+                {% else %}
+                <div class="auth-links">
+                    <a href="{{ url_for('login') }}" class="nav-link">
+                        <i class="fas fa-sign-in-alt"></i>
+                        <span>Login</span>
+                    </a>
+                    <a href="{{ url_for('register') }}" class="nav-link register-btn">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Register</span>
+                    </a>
+                </div>
+                {% endif %}
+            </nav>
         </div>
     </header>
+
+    <!-- Categories Sidebar - REMOVED CLOSE BUTTON FROM HEADER -->
+    <div class="categories-sidebar" id="categoriesSidebar">
+        <div class="sidebar-header">
+            <h3>All Categories</h3>
+            <button class="close-sidebar" id="closeCategories">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="sidebar-content">
+            <div class="categories-list" id="categoriesList">
+                <!-- Categories will be populated by JavaScript - NO "All Categories" item -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay for sidebar -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <!-- Main Content -->
     <main class="main-content">
@@ -138,6 +192,29 @@
         </div>
     </footer>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <!-- Include categories data for JavaScript -->
+    <script id="categories-data" type="application/json">{{ global_categories | tojson }}</script>
+    
+    <!-- URL configuration for JavaScript -->
+    <script>
+        window.APP_URLS = {
+            home: "{{ url_for('home') }}",
+            add_to_cart: "{{ url_for('add_to_cart') }}",
+            view_cart: "{{ url_for('view_cart') }}",
+            user_orders: "{{ url_for('user_orders') }}",
+            admin_products: "{{ url_for('admin_products') }}",
+            login: "{{ url_for('login') }}",
+            register: "{{ url_for('register') }}",
+            logout: "{{ url_for('logout') }}",
+            product_detail: "{{ url_for('product_detail', product_id=0) }}".replace('/0', '')
+        };
+    </script>
+    
+    <!-- Base JavaScript (loaded on all pages) -->
+    <script src="{{ url_for('static', filename='js/base.js') }}"></script>
+    
+    <!-- Page-specific JavaScript -->
+    {% block scripts %}{% endblock %}
+    
 </body>
 </html>

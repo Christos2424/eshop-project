@@ -41,7 +41,16 @@ def utility_processor():
         # Otherwise, it's an external URL
         return image_url
     
-    return dict(get_image_url=get_image_url)
+    # Get categories for header dropdown
+    categories = []
+    try:
+        with get_cursor() as cur:
+            cur.execute("SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != '' ORDER BY category")
+            categories = [row[0] for row in cur.fetchall()]
+    except:
+        pass
+    
+    return dict(get_image_url=get_image_url, global_categories=categories)
 
 # Ensure upload directory exists when module is imported
 if not os.path.exists(UPLOAD_FOLDER):
@@ -345,6 +354,9 @@ def home():
     search_query = request.args.get('q', '')
     category = request.args.get('category', '')
     stock_filter = request.args.get('stock', 'all')  # 'all', 'in_stock', 'out_of_stock'
+    sort_by = request.args.get('sort', 'newest')
+    min_price = request.args.get('min_price', '')
+    max_price = request.args.get('max_price', '')
     per_page = 12
     
     try:
@@ -356,8 +368,8 @@ def home():
             conditions = []
             
             if search_query:
-                conditions.append("(name LIKE ? OR description LIKE ?)")
-                params.extend([f'%{search_query}%', f'%{search_query}%'])
+                conditions.append("name LIKE ?")
+                params.append(f'%{search_query}%')
             
             if category:
                 conditions.append("category = ?")
@@ -370,6 +382,21 @@ def home():
                 conditions.append("stock_quantity = 0")
             # 'all' shows everything, so no condition needed
             
+            # Price range filtering
+            if min_price:
+                try:
+                    conditions.append("price >= ?")
+                    params.append(float(min_price))
+                except ValueError:
+                    pass
+            
+            if max_price:
+                try:
+                    conditions.append("price <= ?")
+                    params.append(float(max_price))
+                except ValueError:
+                    pass
+            
             if conditions:
                 where_clause = " WHERE " + " AND ".join(conditions)
                 query += where_clause
@@ -379,14 +406,25 @@ def home():
             cur.execute(count_query, params)
             total = cur.fetchone()[0]
             
+            # Add sorting
+            sort_map = {
+                'newest': 'created_at DESC',
+                'oldest': 'created_at ASC',
+                'price_low': 'price ASC',
+                'price_high': 'price DESC',
+                'name_az': 'name ASC',
+                'name_za': 'name DESC'
+            }
+            sort_clause = sort_map.get(sort_by, 'created_at DESC')
+            
             # Get products with pagination
-            query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+            query += f" ORDER BY {sort_clause} LIMIT ? OFFSET ?"
             params.extend([per_page, (page-1)*per_page])
             cur.execute(query, params)
             products = cur.fetchall()
             
             # Get distinct categories for filter
-            cur.execute("SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != ''")
+            cur.execute("SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != '' ORDER BY category")
             categories = [row[0] for row in cur.fetchall()]
             
         total_pages = (total + per_page - 1) // per_page
@@ -400,34 +438,25 @@ def home():
                              search_query=search_query,
                              category=category,
                              categories=categories,
-                             stock_filter=stock_filter)
+                             stock_filter=stock_filter,
+                             sort_by=sort_by,
+                             min_price=min_price,
+                             max_price=max_price)
     except Exception as e:
         flash(f"Error loading products: {str(e)}", 'danger')
-        return render_template('index.html', products=[], page=1, total=0, total_pages=0)
+        return render_template('index.html', products=[], page=1, total=0, total_pages=0, categories=[])
     
 @app.route('/search')
 def search():
     query = request.args.get('q', '')
     stock_filter = request.args.get('stock', 'all')
+    sort_by = request.args.get('sort', 'newest')
+    min_price = request.args.get('min_price', '')
+    max_price = request.args.get('max_price', '')
     
     if query:
-        try:
-            with get_cursor() as cur:
-                # Build search query with stock filter
-                sql = "SELECT * FROM products WHERE (name LIKE ? OR description LIKE ?)"
-                params = [f'%{query}%', f'%{query}%']
-                
-                if stock_filter == 'in_stock':
-                    sql += " AND stock_quantity > 0"
-                elif stock_filter == 'out_of_stock':
-                    sql += " AND stock_quantity = 0"
-                
-                cur.execute(sql, params)
-                products = cur.fetchall()
-            
-            return render_template('index.html', products=products, query=query, stock_filter=stock_filter)
-        except Exception as e:
-            flash(f"Search error: {str(e)}", 'danger')
+        return redirect(url_for('home', q=query, stock=stock_filter, sort=sort_by, 
+                               min_price=min_price, max_price=max_price))
     return redirect(url_for('home'))
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -560,17 +589,18 @@ def add_to_cart():
                 flash('Product not found', 'danger')
                 return redirect(request.referrer or url_for('home'))
             
-            # Check stock
-            if product['stock_quantity'] < quantity:
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return jsonify({'success': False, 'message': f"Only {product['stock_quantity']} units available"})
-                flash(f"Only {product['stock_quantity']} units of {product['name']} available", 'warning')
-                return redirect(request.referrer or url_for('home'))
-            
+            # FIXED: Check stock availability - fix the logic order
             if product['stock_quantity'] == 0:
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return jsonify({'success': False, 'message': f"{product['name']} is out of stock"})
                 flash(f"{product['name']} is currently out of stock", 'warning')
+                return redirect(request.referrer or url_for('home'))
+            
+            # Check if requested quantity exceeds available stock
+            if product['stock_quantity'] < quantity:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'success': False, 'message': f"Only {product['stock_quantity']} units available"})
+                flash(f"Only {product['stock_quantity']} units of {product['name']} available", 'warning')
                 return redirect(request.referrer or url_for('home'))
         
         # Update cart
@@ -581,6 +611,7 @@ def add_to_cart():
         current_quantity = cart.get(str(product_id), 0)
         new_quantity = current_quantity + quantity
         
+        # Final check to ensure we don't exceed stock
         if new_quantity > product['stock_quantity']:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'success': False, 'message': f"Cannot add more than {product['stock_quantity']} units"})
