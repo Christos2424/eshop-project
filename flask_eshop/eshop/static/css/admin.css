@@ -12,10 +12,15 @@
     align-items: flex-start;
     margin-bottom: 30px;
     padding: 30px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--ink) 0%, var(--primary) 100%);
     border-radius: 16px;
     color: white;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    box-shadow: 0 8px 32px rgba(var(--ink-rgb), 0.1);
+}
+
+.header-content h1,
+.header-content h1 i {
+    color: #fff;
 }
 
 .header-content h1 {
@@ -29,8 +34,18 @@
 
 .header-content p {
     margin: 0;
-    opacity: 0.9;
+    color: #fff;
+    opacity: 0.85;
     font-size: 1.1rem;
+}
+
+.header-actions .btn-primary {
+    background: var(--accent);
+    color: var(--ink);
+}
+
+.header-actions .btn-primary:hover:not(:disabled) {
+    background: var(--accent-light);
 }
 
 .header-actions {
@@ -81,24 +96,24 @@
     padding: 24px;
     border-radius: 12px;
     text-align: center;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    box-shadow: 0 4px 16px rgba(var(--ink-rgb), 0.08);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .stat-item:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    box-shadow: 0 8px 24px rgba(var(--ink-rgb), 0.12);
 }
 
 .stat-number {
     font-size: 2.5rem;
     font-weight: 700;
-    color: #667eea;
+    color: var(--primary);
     margin-bottom: 8px;
 }
 
 .stat-label {
-    color: #666;
+    color: var(--muted);
     font-weight: 500;
     font-size: 0.95rem;
 }
@@ -110,19 +125,19 @@
 .table-section .section-title {
     font-size: 1.5rem;
     font-weight: 600;
-    color: #2d3748;
+    color: var(--ink);
     margin-bottom: 20px;
     display: flex;
     align-items: center;
     gap: 10px;
     padding-bottom: 10px;
-    border-bottom: 2px solid #e2e8f0;
+    border-bottom: 2px solid var(--line);
 }
 
 .table-container {
     background: white;
     border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+    box-shadow: 0 8px 32px rgba(var(--ink-rgb), 0.08);
     overflow: hidden;
 }
 
@@ -133,15 +148,15 @@
 }
 
 .data-table thead {
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-    border-bottom: 2px solid #e2e8f0;
+    background: linear-gradient(135deg, var(--surface-2) 0%, var(--line) 100%);
+    border-bottom: 2px solid var(--line);
 }
 
 .data-table th {
     padding: 20px 16px;
     text-align: left;
     font-weight: 600;
-    color: #2d3748;
+    color: var(--ink);
     font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -158,14 +173,14 @@
 .actions-col { width: 150px; }
 
 .data-row {
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--surface-2);
     transition: all 0.3s ease;
 }
 
 .data-row:hover {
-    background: #f8fafc;
+    background: var(--surface-2);
     transform: scale(1.002);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 16px rgba(var(--ink-rgb), 0.05);
 }
 
 .data-row td {
@@ -180,9 +195,9 @@
 }
 
 .clickable-row:hover {
-    background: #f0f7ff !important;
+    background: var(--primary-50) !important;
     transform: scale(1.002);
-    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 4px 16px rgba(var(--primary-rgb), 0.1);
 }
 
 .id-cell {
@@ -192,8 +207,8 @@
 .id-badge {
     display: inline-block;
     padding: 6px 10px;
-    background: #e2e8f0;
-    color: #4a5568;
+    background: var(--line);
+    color: var(--ink-2);
     border-radius: 8px;
     font-size: 0.8rem;
     font-weight: 600;
@@ -210,7 +225,7 @@
     height: 60px;
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(var(--ink-rgb), 0.1);
     margin: 0 auto;
 }
 
@@ -219,6 +234,10 @@
     height: 100%;
     object-fit: cover;
     transition: transform 0.3s ease;
+}
+
+.image-wrapper .img-placeholder {
+    font-size: 1.3rem;
 }
 
 .data-row:hover .table-image {
@@ -259,13 +278,13 @@
 
 .data-table .product-name {
     font-weight: 600;
-    color: #1a202c;
+    color: var(--ink);
     font-size: 1rem;
     line-height: 1.4;
 }
 
 .data-table .product-description {
-    color: #718096;
+    color: var(--muted);
     font-size: 0.85rem;
     line-height: 1.4;
 }
@@ -307,7 +326,7 @@
 .stock-bar {
     width: 100%;
     height: 6px;
-    background: #e2e8f0;
+    background: var(--line);
     border-radius: 3px;
     overflow: hidden;
 }
@@ -334,8 +353,8 @@
 .category-tag {
     display: inline-block;
     padding: 6px 12px;
-    background: #e2e8f0;
-    color: #4a5568;
+    background: var(--line);
+    color: var(--ink-2);
     border-radius: 20px;
     font-size: 0.85rem;
     font-weight: 500;
@@ -368,15 +387,15 @@
 
 .btn-action:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 12px rgba(var(--ink-rgb), 0.15);
 }
 
 .btn-edit {
-    background: #3b82f6;
+    background: var(--primary);
 }
 
 .btn-edit:hover {
-    background: #2563eb;
+    background: var(--primary-600);
 }
 
 .btn-delete {
@@ -397,18 +416,18 @@
 
 .data-table .empty-state {
     text-align: center;
-    color: #718096;
+    color: var(--muted);
 }
 
 .data-table .empty-state i {
     font-size: 4rem;
     margin-bottom: 20px;
-    color: #cbd5e0;
+    color: var(--line-strong);
 }
 
 .data-table .empty-state h3 {
     margin: 0 0 12px 0;
-    color: #4a5568;
+    color: var(--ink-2);
     font-size: 1.5rem;
 }
 
@@ -422,7 +441,7 @@
     background: white;
     padding: 20px;
     border-radius: 12px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    box-shadow: 0 4px 16px rgba(var(--ink-rgb), 0.08);
     margin-bottom: 24px;
 }
 
@@ -446,12 +465,12 @@
 .filter-group label {
     font-size: 0.85rem;
     font-weight: 600;
-    color: #4a5568;
+    color: var(--ink-2);
 }
 
 .filter-select {
     padding: 10px 12px;
-    border: 2px solid #e2e8f0;
+    border: 2px solid var(--line);
     border-radius: 8px;
     background: white;
     font-size: 0.9rem;
@@ -462,12 +481,12 @@
 
 .filter-select:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.12);
 }
 
 .filter-select:hover {
-    border-color: #cbd5e0;
+    border-color: var(--line-strong);
 }
 
 /* Admin Orders Specific Styles */
@@ -483,10 +502,10 @@
     align-items: flex-start;
     margin-bottom: 30px;
     padding: 30px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--ink) 0%, var(--primary) 100%);
     border-radius: 16px;
     color: white;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    box-shadow: 0 8px 32px rgba(var(--ink-rgb), 0.1);
 }
 
 .orders-stats {
@@ -501,13 +520,13 @@
     padding: 24px;
     border-radius: 12px;
     text-align: center;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    box-shadow: 0 4px 16px rgba(var(--ink-rgb), 0.08);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .order-stat:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    box-shadow: 0 8px 24px rgba(var(--ink-rgb), 0.12);
 }
 
 .orders-container {
@@ -523,17 +542,17 @@
 }
 
 .orders-table th {
-    background: #f8fafc;
+    background: var(--surface-2);
     padding: 20px;
     text-align: left;
     font-weight: 600;
     color: var(--text-dark);
-    border-bottom: 2px solid #e2e8f0;
+    border-bottom: 2px solid var(--line);
 }
 
 .orders-table td {
     padding: 20px;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--surface-2);
     vertical-align: middle;
 }
 
@@ -573,7 +592,7 @@
     align-items: center;
     gap: 8px;
     padding: 8px;
-    background: #f8fafc;
+    background: var(--surface-2);
     border-radius: 6px;
 }
 
@@ -610,8 +629,8 @@
 }
 
 .status-paid {
-    background: #dbeafe;
-    color: #1e40af;
+    background: var(--primary-100);
+    color: var(--primary-700);
 }
 
 .status-shipped {
@@ -620,8 +639,8 @@
 }
 
 .status-cancelled {
-    background: #f1f5f9;
-    color: #64748b;
+    background: var(--surface-2);
+    color: var(--muted);
 }
 
 .admin-actions {
@@ -638,7 +657,7 @@
 .empty-orders i {
     font-size: 4rem;
     margin-bottom: 20px;
-    color: #cbd5e1;
+    color: var(--line-strong);
 }
 
 .empty-orders h3 {

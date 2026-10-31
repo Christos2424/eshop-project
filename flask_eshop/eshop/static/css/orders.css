@@ -237,6 +237,14 @@
     color: var(--primary);
 }
 
+.order-detail-line {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 0.6rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
 .order-detail-total {
     display: flex;
     justify-content: space-between;

@@ -1,12 +1,4 @@
 {% set current_category = request.args.get('category', '') if request.endpoint == 'main.home' else None %}
-<div class="announcement-bar">
-    <div class="announcement-inner">
-        <span><i class="fas fa-shipping-fast"></i> {{ _('Free shipping on orders over ${amount}', amount=config.FREE_SHIPPING_THRESHOLD) }}</span>
-        <span class="announcement-extra"><i class="fas fa-undo"></i> {{ _('30-day returns') }}</span>
-        <span class="announcement-extra"><i class="fas fa-shield-alt"></i> {{ _('2-year warranty') }}</span>
-    </div>
-</div>
-
 <header class="main-header" id="mainHeader">
     <div class="header-bar">
         <a href="{{ url_for('main.home') }}" class="logo" aria-label="{{ _('eShop home') }}">
@@ -95,10 +87,13 @@
                     </a>
                     {% endif %}
                     <div class="dropdown-divider"></div>
-                    <a href="{{ url_for('auth.logout') }}" class="dropdown-item">
-                        <i class="fas fa-sign-out-alt"></i>
-                        {{ _('Logout') }}
-                    </a>
+                    <form method="POST" action="{{ url_for('auth.logout') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="dropdown-item">
+                            <i class="fas fa-sign-out-alt"></i>
+                            {{ _('Logout') }}
+                        </button>
+                    </form>
                 </div>
             </div>
             {% else %}

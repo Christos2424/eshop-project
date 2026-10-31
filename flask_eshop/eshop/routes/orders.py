@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, session, flash, jsonify, url_for
+from flask import Blueprint, render_template, session, flash, jsonify, url_for, current_app
 
 from ..db import get_cursor
 from ..i18n import gettext as _, localized, name_sql
@@ -47,8 +47,9 @@ def user_orders():
                 """, (session['user_id'],))
             orders = cur.fetchall()
         return render_template(template, orders=orders)
-    except Exception as e:
-        flash(_('Error loading orders: {error}', error=str(e)), 'danger')
+    except Exception:
+        current_app.logger.exception('Loading orders failed')
+        flash(_('An unexpected error occurred. Please try again.'), 'danger')
         return render_template(template, orders=[])
 
 

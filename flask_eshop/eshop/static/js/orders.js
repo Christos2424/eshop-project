@@ -20,6 +20,12 @@ window.viewOrderDetails = async function(orderId) {
 function renderOrderDetails({ order, items }) {
     const status = t(order.status.charAt(0).toUpperCase() + order.status.slice(1));
     const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+    // Order totals include shipping and tax; older orders stored only the items' total
+    const itemsTotal = items.reduce((sum, item) => sum + item.line_total, 0);
+    const extras = order.total - itemsTotal;
+    const breakdown = extras > 0.005 ? `
+        <div class="order-detail-line"><span>${escapeHtml(t('Subtotal'))}</span><span>${formatPrice(itemsTotal)}</span></div>
+        <div class="order-detail-line"><span>${escapeHtml(t('Shipping & tax'))}</span><span>${formatPrice(extras)}</span></div>` : '';
     return `
         <div class="order-detail-meta">
             <span class="status-pill status-${escapeHtml(order.status)}">${escapeHtml(status)}</span>
@@ -37,6 +43,7 @@ function renderOrderDetails({ order, items }) {
                 <strong>${formatPrice(item.line_total)}</strong>
             </li>`).join('')}
         </ul>
+        ${breakdown}
         <div class="order-detail-total">
             <span>${escapeHtml(t('Order total'))}</span>
             <strong>${formatPrice(order.total)}</strong>

@@ -31,7 +31,7 @@
 .form-group input:hover,
 .form-group textarea:hover,
 .form-group select:hover {
-    border-color: #b8bfd0;
+    border-color: #a9b2be;
 }
 
 .form-group input:focus,
@@ -199,7 +199,7 @@
     position: absolute;
     inset: 0 0 auto;
     height: 4px;
-    background: linear-gradient(90deg, var(--primary), #a855f7, #ec4899);
+    background: linear-gradient(90deg, var(--primary), var(--accent));
 }
 
 .auth-header {
@@ -214,10 +214,10 @@
     border-radius: 16px;
     display: grid;
     place-items: center;
-    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
     color: #fff;
     font-size: 1.3rem;
-    box-shadow: 0 10px 20px -10px rgba(79, 70, 229, 0.8);
+    box-shadow: 0 10px 20px -10px rgba(var(--primary-rgb), 0.8);
 }
 
 .auth-header h1 {

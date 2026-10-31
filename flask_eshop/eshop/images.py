@@ -23,7 +23,7 @@ CATEGORY_ART = {
     'toys & games': ('fa-puzzle-piece', 45),
     'food': ('fa-apple-alt', 95),
 }
-DEFAULT_ART = ('fa-box-open', 245)
+DEFAULT_ART = ('fa-box-open', 210)
 
 
 def placeholder_art(category):
@@ -126,14 +126,19 @@ def download_image_from_url(url, product_id):
 def save_uploaded_file(file, product_id):
     """Save uploaded file to the uploads folder"""
     try:
-        if file and file.filename != '' and allowed_file(file.filename):
+        if file and file.filename != '' and not allowed_file(file.filename):
+            flash(gettext('Unsupported image format. Use PNG, JPG, GIF or WEBP.'), 'danger')
+            return None
+
+        if file and file.filename != '':
             # Check file size
             file.seek(0, os.SEEK_END)
             file_length = file.tell()
             file.seek(0)
 
             if file_length > current_app.config['MAX_CONTENT_LENGTH']:
-                raise ValueError("File too large (max 16MB)")
+                flash(gettext('File too large. Maximum size is 16MB.'), 'danger')
+                return None
 
             # Generate secure filename with unique identifier
             ext = file.filename.rsplit('.', 1)[1].lower()
@@ -148,6 +153,7 @@ def save_uploaded_file(file, product_id):
             file.save(filepath)
             return f"uploads/{filename}"
         return None
-    except Exception as e:
-        flash(gettext('Error processing image: {error}', error=str(e)), 'danger')
+    except Exception:
+        current_app.logger.exception('Saving an uploaded image failed')
+        flash(gettext('An unexpected error occurred. Please try again.'), 'danger')
         return None
