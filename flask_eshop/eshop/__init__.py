@@ -44,6 +44,15 @@ def create_app(test_config=None):
     register_template_helpers(app)
     register_error_handlers(app)
 
+    @app.after_request
+    def security_headers(response):
+        # Stop browsers guessing file types (an upload named .png can't run as HTML)
+        # and other sites from framing the shop
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+        response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        return response
+
     # Product images uploaded by admins
     @app.route('/uploads/<path:filename>')
     def uploaded_file(filename):
@@ -54,8 +63,8 @@ def create_app(test_config=None):
     def favicon():
         try:
             return send_from_directory(os.path.join(app.static_folder, 'images'),
-                                       'favicon.ico',
-                                       mimetype='image/vnd.microsoft.icon')
+                                       'favicon.svg',
+                                       mimetype='image/svg+xml')
         except Exception:
             # If favicon doesn't exist, return empty response
             return '', 204
@@ -98,7 +107,7 @@ def register_template_helpers(app):
     @app.context_processor
     def utility_processor():
         def get_image_url(image_url):
-            return image_src(image_url) or url_for('static', filename='images/placeholder.png')
+            return image_src(image_url) or url_for('static', filename='images/placeholder.svg')
 
         # Get categories (with product counts) for the header sidebar and filter chips
         categories = []
@@ -122,15 +131,21 @@ def register_error_handlers(app):
     def internal_error(error):
         return render_template('errors/500.html'), 500
 
+    def wants_json():
+        return request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
     @app.errorhandler(413)
     def too_large(error):
-        flash(_('File too large. Maximum size is 16MB.'), 'danger')
+        message = _('File too large. Maximum size is 16MB.')
+        if wants_json():
+            return jsonify({'success': False, 'message': message, 'error': message}), 413
+        flash(message, 'danger')
         return redirect(request.referrer or url_for('main.home'))
 
     @app.errorhandler(CSRFError)
     def csrf_error(error):
         message = _('Your session expired. Please try again.')
-        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if wants_json():
             return jsonify({'success': False, 'message': message, 'error': message}), 400
         flash(message, 'warning')
         return redirect(request.referrer or url_for('main.home'))
@@ -140,5 +155,8 @@ def register_error_handlers(app):
         # Let HTTP errors (405, 403, ...) keep their own status code
         if isinstance(error, HTTPException):
             return error
-        flash(_('An unexpected error occurred. Please try again.'), 'danger')
+        app.logger.exception('Unhandled error on %s %s', request.method, request.path)
+        message = _('An unexpected error occurred. Please try again.')
+        if wants_json():
+            return jsonify({'success': False, 'message': message, 'error': message}), 500
         return render_template('errors/500.html'), 500

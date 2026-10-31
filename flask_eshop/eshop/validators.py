@@ -1,3 +1,4 @@
+import math
 import re
 
 
@@ -18,7 +19,9 @@ def validate_product_data(data):
 
     try:
         price = float(data.get('price', 0))
-        if price < 0:  # Allow free products
+        if not math.isfinite(price):  # float() accepts 'nan' and 'inf'
+            errors.append("Price must be a valid number")
+        elif price < 0:  # Allow free products
             errors.append("Price cannot be negative")
     except (ValueError, TypeError):
         errors.append("Price must be a valid number")

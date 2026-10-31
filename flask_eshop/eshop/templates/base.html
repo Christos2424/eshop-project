@@ -7,6 +7,7 @@
     <title>{% block title %}{{ _('eShop - Modern Online Shopping') }}{% endblock %}</title>
     <!-- Lets CSS hide no-JS fallbacks (like the filters' Apply button) before the page paints -->
     <script>document.documentElement.classList.add('js');</script>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/favicon.svg') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
@@ -63,7 +64,7 @@
             logout: "{{ url_for('auth.logout') }}",
             search_api: "{{ url_for('api.search') }}",
             products_api: "{{ url_for('api.products') }}",
-            placeholder_image: "{{ url_for('static', filename='images/placeholder.png') }}",
+            placeholder_image: "{{ url_for('static', filename='images/placeholder.svg') }}",
             product_detail: "{{ url_for('main.product_detail', product_id=0) }}".replace('/0', '')
         };
         window.SHOP_CONFIG = {

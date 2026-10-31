@@ -242,7 +242,7 @@
 .progress-track {
     height: 6px;
     border-radius: 999px;
-    background: rgba(79, 70, 229, 0.15);
+    background: rgba(var(--primary-rgb), 0.15);
     overflow: hidden;
 }
 
@@ -250,7 +250,7 @@
     height: 100%;
     width: 0;
     border-radius: inherit;
-    background: linear-gradient(90deg, var(--primary), #8b5cf6);
+    background: linear-gradient(90deg, var(--primary), var(--accent));
     transition: width 0.6s var(--ease);
 }
 
@@ -356,7 +356,7 @@
     display: flex;
     flex-direction: column;
     background: var(--surface);
-    box-shadow: -20px 0 50px -20px rgba(15, 23, 42, 0.35);
+    box-shadow: -20px 0 50px -20px rgba(var(--ink-rgb), 0.35);
     transform: translateX(105%);
     visibility: hidden;
     transition: transform 0.4s var(--ease), visibility 0.4s;

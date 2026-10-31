@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify, url_for, current_app
 from ..db import get_cursor
 from ..i18n import fold, name_sql
 from ..utils import product_to_dict
-from .main import search_condition
+from .main import LIKE_ESCAPE, escape_like, search_condition
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -26,9 +26,9 @@ def search():
         name = name_sql()
         cur.execute(f"""
             SELECT * FROM products WHERE {condition}
-            ORDER BY (fold({name}) LIKE ?) DESC, stock_quantity > 0 DESC, {name}
+            ORDER BY (fold({name}) LIKE ? {LIKE_ESCAPE}) DESC, stock_quantity > 0 DESC, {name}
             LIMIT ?
-        """, params + [f'{fold(query)}%', current_app.config['SEARCH_SUGGESTIONS']])
+        """, params + [f'{escape_like(fold(query))}%', current_app.config['SEARCH_SUGGESTIONS']])
         products = cur.fetchall()
 
     return jsonify({

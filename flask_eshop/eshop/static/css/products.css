@@ -11,10 +11,10 @@
     overflow: hidden;
     color: #fff;
     background:
-        radial-gradient(circle at 88% 12%, rgba(192, 132, 252, 0.45), transparent 42%),
-        radial-gradient(circle at 8% 100%, rgba(56, 189, 248, 0.28), transparent 45%),
-        linear-gradient(135deg, #1e1b4b 0%, #312e81 48%, #4f46e5 100%);
-    box-shadow: 0 30px 60px -30px rgba(49, 46, 129, 0.65);
+        radial-gradient(circle at 88% 12%, rgba(var(--accent-rgb), 0.5), transparent 42%),
+        radial-gradient(circle at 8% 100%, rgba(242, 243, 245, 0.1), transparent 45%),
+        linear-gradient(135deg, var(--ink) 0%, var(--primary-700) 50%, var(--primary) 100%);
+    box-shadow: 0 30px 60px -30px rgba(var(--ink-rgb), 0.6);
 }
 
 /* Subtle grid texture */
@@ -48,11 +48,11 @@
     border: 1px solid rgba(255, 255, 255, 0.18);
     font-size: 0.8rem;
     font-weight: 600;
-    color: #e0e7ff;
+    color: var(--on-dark);
 }
 
 .hero-eyebrow i {
-    color: #fcd34d;
+    color: var(--accent-light);
 }
 
 .hero h1 {
@@ -66,7 +66,7 @@
 
 .hero p {
     max-width: 480px;
-    color: #c7d2fe;
+    color: #d0d9e3;
     font-size: 1.05rem;
     margin-bottom: 1.75rem;
 }
@@ -119,7 +119,7 @@
 
 .hero-perks span {
     font-size: 0.82rem;
-    color: #c7d2fe;
+    color: #d0d9e3;
 }
 
 /* Shop controls */

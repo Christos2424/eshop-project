@@ -16,30 +16,30 @@
 
             <div class="form-group">
                 <label for="name">{{ _('Product Name') }} *</label>
-                <input type="text" id="name" name="name" required class="form-control">
+                <input type="text" id="name" name="name" value="{{ request.form.get('name', '') }}" required class="form-control">
             </div>
 
             <div class="form-group">
                 <label for="description">{{ _('Description') }} *</label>
-                <textarea id="description" name="description" rows="4" required class="form-control" placeholder="{{ _('Enter product description...') }}"></textarea>
+                <textarea id="description" name="description" rows="4" required class="form-control" placeholder="{{ _('Enter product description...') }}">{{ request.form.get('description', '') }}</textarea>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
                     <label for="price">{{ _('Price ($)') }} *</label>
-                    <input type="number" id="price" name="price" step="0.01" min="0" required class="form-control">
+                    <input type="number" id="price" name="price" step="0.01" min="0" value="{{ request.form.get('price', '') }}" required class="form-control">
                 </div>
 
                 <div class="form-group">
                     <label for="stock">{{ _('Stock Quantity') }} *</label>
-                    <input type="number" id="stock" name="stock" min="0" required class="form-control">
+                    <input type="number" id="stock" name="stock" min="0" value="{{ request.form.get('stock', '') }}" required class="form-control">
                 </div>
             </div>
 
             <div class="form-group">
                 <label for="category">{{ _('Category') }}</label>
-                <input type="text" id="category" name="category" class="form-control" list="categoryOptions"
-                       placeholder="{{ _('e.g., Electronics, Books') }}">
+                <input type="text" id="category" name="category" value="{{ request.form.get('category', '') }}"
+                       class="form-control" list="categoryOptions" placeholder="{{ _('e.g., Electronics, Books') }}">
                 {% include 'admin/_category_options.html' %}
             </div>
         </div>
@@ -50,12 +50,12 @@
 
             <div class="form-group">
                 <label for="name_el">{{ _('Product Name (Greek)') }}</label>
-                <input type="text" id="name_el" name="name_el" class="form-control" lang="el">
+                <input type="text" id="name_el" name="name_el" value="{{ request.form.get('name_el', '') }}" class="form-control" lang="el">
             </div>
 
             <div class="form-group">
                 <label for="description_el">{{ _('Description (Greek)') }}</label>
-                <textarea id="description_el" name="description_el" rows="4" class="form-control" lang="el"></textarea>
+                <textarea id="description_el" name="description_el" rows="4" class="form-control" lang="el">{{ request.form.get('description_el', '') }}</textarea>
             </div>
         </div>
 
@@ -81,7 +81,7 @@
                     <h4><i class="fas fa-link"></i> {{ _('Image URL') }}</h4>
                     <div class="form-group">
                         <label for="image_url">{{ _('Image URL') }}</label>
-                        <input type="url" id="image_url" name="image_url" class="form-control" placeholder="https://example.com/image.jpg">
+                        <input type="url" id="image_url" name="image_url" value="{{ request.form.get('image_url', '') }}" class="form-control" placeholder="https://example.com/image.jpg">
                         <small class="form-text">{{ _('Enter a direct link to the product image') }}</small>
                     </div>
                 </div>

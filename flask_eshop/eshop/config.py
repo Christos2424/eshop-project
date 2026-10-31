@@ -16,6 +16,9 @@ class Config:
     # CSRF tokens stay valid for the whole session
     WTF_CSRF_TIME_LIMIT = None
 
+    # Don't send the session cookie with requests started by other sites
+    SESSION_COOKIE_SAMESITE = 'Lax'
+
     PRODUCTS_PER_PAGE = 12
     SEARCH_SUGGESTIONS = 6
 

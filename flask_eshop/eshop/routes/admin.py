@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 
 from ..db import get_cursor
 from ..i18n import gettext as _
@@ -9,6 +9,10 @@ from ..validators import validate_product_data
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 ORDER_STATUSES = ['pending', 'paid', 'shipped', 'cancelled']
+
+
+class NotEnoughStock(Exception):
+    """Raised inside a transaction to roll it back when an order can't be reopened"""
 
 
 @bp.before_request
@@ -22,10 +26,60 @@ def greek_fields(form):
     return form.get('name_el', '').strip() or None, form.get('description_el', '').strip() or None
 
 
+def product_fields(form):
+    """The product form's values, cleaned up and converted (call after validate_product_data)"""
+    name_el, description_el = greek_fields(form)
+    return {
+        'name': form['name'].strip(),
+        'description': form['description'].strip(),
+        'name_el': name_el,
+        'description_el': description_el,
+        'price': round(float(form['price']), 2),
+        'stock_quantity': int(form['stock']),
+        'category': form.get('category', '').strip(),
+    }
+
+
+def form_values(product, form):
+    """The product with what the admin typed on top, to refill the form after an error"""
+    values = dict(product)
+    for field in ('name', 'description', 'name_el', 'description_el', 'category'):
+        values[field] = form.get(field, values.get(field) or '')
+    # Price is shown with "%.2f", so only take it when it's a number
+    try:
+        values['price'] = float(form.get('price', ''))
+    except ValueError:
+        pass
+    values['stock_quantity'] = form.get('stock', values['stock_quantity'])
+    return values
+
+
 def next_product_id():
     with get_cursor() as cur:
         cur.execute("SELECT COALESCE(MAX(product_id), 0) + 1 as next_id FROM products")
         return cur.fetchone()['next_id']
+
+
+def new_image(form, files, product_id, current_image=None):
+    """Path of a newly uploaded or downloaded image, or None when none was given or it failed.
+
+    The edit form shows an external image's URL; leaving it unchanged doesn't download it again.
+    """
+    file = files.get('image_file')
+    if file and file.filename != '':
+        image_path = save_uploaded_file(file, product_id)
+        if image_path:
+            flash(_('Image uploaded successfully!'), 'success')
+            return image_path
+
+    image_url = form.get('image_url', '').strip()
+    if image_url and image_url != current_image:
+        image_path = download_image_from_url(image_url, product_id)
+        if image_path:
+            flash(_('Image downloaded from URL successfully!'), 'success')
+            return image_path
+        flash(_('Failed to download image from URL'), 'warning')
+    return None
 
 
 @bp.route('/products')
@@ -34,20 +88,10 @@ def products():
         with get_cursor() as cur:
             cur.execute("SELECT * FROM products ORDER BY created_at DESC")
             products = cur.fetchall()
-
-            # Fetch orders with user information
-            cur.execute("""
-                SELECT o.order_id, o.total, o.status, o.created_at,
-                       u.username, u.email
-                FROM orders o
-                JOIN users u ON o.user_id = u.user_id
-                ORDER BY o.created_at DESC
-            """)
-            orders = cur.fetchall()
-
-        return render_template('admin/products.html', products=products, orders=orders)
-    except Exception as e:
-        flash(_('Error: {error}', error=str(e)), 'danger')
+        return render_template('admin/products.html', products=products)
+    except Exception:
+        current_app.logger.exception('Loading admin products failed')
+        flash(_('An unexpected error occurred. Please try again.'), 'danger')
         return redirect(url_for('main.home'))
 
 
@@ -60,44 +104,24 @@ def add_product():
                 flash(_(error), 'danger')
             return render_template('admin/add_product.html')
 
-        name = request.form['name']
-        description = request.form['description']
-        name_el, description_el = greek_fields(request.form)
-        price = float(request.form['price'])
-        stock = int(request.form['stock'])
-        category = request.form['category']
-        image_url = request.form.get('image_url', '').strip()
-
-        image_path = None
-
+        fields = product_fields(request.form)
         try:
-            # Handle image upload or URL
-            file = request.files.get('image_file')
-            if file and file.filename != '':
-                image_path = save_uploaded_file(file, next_product_id())
-                if image_path:
-                    flash(_('Image uploaded successfully!'), 'success')
-
-            # If no file uploaded but URL provided
-            if not image_path and image_url:
-                image_path = download_image_from_url(image_url, next_product_id())
-                if image_path:
-                    flash(_('Image downloaded from URL successfully!'), 'success')
-                else:
-                    flash(_('Failed to download image from URL'), 'warning')
+            image_path = new_image(request.form, request.files, next_product_id())
 
             with get_cursor() as cur:
                 cur.execute(
                     """INSERT INTO products
                     (name, name_el, description, description_el, price, stock_quantity, category, image_url)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (name, name_el, description, description_el, price, stock, category, image_path)
+                    (fields['name'], fields['name_el'], fields['description'], fields['description_el'],
+                     fields['price'], fields['stock_quantity'], fields['category'], image_path)
                 )
 
             flash(_('Product added successfully!'), 'success')
             return redirect(url_for('admin.products'))
-        except Exception as e:
-            flash(_('Error adding product: {error}', error=str(e)), 'danger')
+        except Exception:
+            current_app.logger.exception('Adding a product failed')
+            flash(_('An unexpected error occurred. Please try again.'), 'danger')
             return render_template('admin/add_product.html')
 
     return render_template('admin/add_product.html')
@@ -107,66 +131,44 @@ def add_product():
 def edit_product(product_id):
     try:
         with get_cursor() as cur:
-            if request.method == 'POST':
-                validation_errors = validate_product_data(request.form)
-                if validation_errors:
-                    for error in validation_errors:
-                        flash(_(error), 'danger')
-                    return redirect(url_for('admin.edit_product', product_id=product_id))
+            cur.execute("SELECT * FROM products WHERE product_id = ?", (product_id,))
+            product = cur.fetchone()
+        if not product:
+            flash(_('Product not found'), 'danger')
+            return redirect(url_for('admin.products'))
 
-                name = request.form['name']
-                description = request.form['description']
-                name_el, description_el = greek_fields(request.form)
-                price = float(request.form['price'])
-                stock = int(request.form['stock'])
-                category = request.form['category']
-                image_url = request.form.get('image_url', '').strip()
+        if request.method == 'GET':
+            return render_template('admin/edit_product.html', product=product)
 
-                # Get current product data
-                cur.execute("SELECT image_url FROM products WHERE product_id = ?", (product_id,))
-                current_product = cur.fetchone()
-                image_path = current_product['image_url'] if current_product else None  # Keep current image by default
+        validation_errors = validate_product_data(request.form)
+        if validation_errors:
+            for error in validation_errors:
+                flash(_(error), 'danger')
+            return render_template('admin/edit_product.html', product=form_values(product, request.form))
 
-                # Handle image upload
-                file = request.files.get('image_file')
-                if file and file.filename != '':
-                    new_image_path = save_uploaded_file(file, product_id)
-                    if new_image_path:
-                        image_path = new_image_path
-                        flash(_('New image uploaded successfully!'), 'success')
+        fields = product_fields(request.form)
 
-                # Handle image URL
-                if not image_path and image_url:
-                    new_image_path = download_image_from_url(image_url, product_id)
-                    if new_image_path:
-                        image_path = new_image_path
-                        flash(_('New image downloaded from URL successfully!'), 'success')
-                    else:
-                        flash(_('Failed to download image from URL'), 'warning')
+        # Keep the current image unless it's removed or replaced
+        image_path = product['image_url']
+        if request.form.get('remove_image'):
+            image_path = None
+            flash(_('Image removed successfully!'), 'success')
+        image_path = new_image(request.form, request.files, product_id, product['image_url']) or image_path
 
-                # If "remove image" is checked, set image_path to None
-                if request.form.get('remove_image'):
-                    image_path = None
-                    flash(_('Image removed successfully!'), 'success')
-
-                cur.execute(
-                    """UPDATE products
-                    SET name=?, name_el=?, description=?, description_el=?, price=?, stock_quantity=?,
-                        category=?, image_url=?
-                    WHERE product_id=?""",
-                    (name, name_el, description, description_el, price, stock, category, image_path, product_id)
-                )
-                flash(_('Product updated successfully!'), 'success')
-                return redirect(url_for('admin.products'))
-            else:
-                cur.execute("SELECT * FROM products WHERE product_id = ?", (product_id,))
-                product = cur.fetchone()
-                if not product:
-                    flash(_('Product not found'), 'danger')
-                    return redirect(url_for('admin.products'))
-                return render_template('admin/edit_product.html', product=product)
-    except Exception as e:
-        flash(_('Error: {error}', error=str(e)), 'danger')
+        with get_cursor() as cur:
+            cur.execute(
+                """UPDATE products
+                SET name=?, name_el=?, description=?, description_el=?, price=?, stock_quantity=?,
+                    category=?, image_url=?
+                WHERE product_id=?""",
+                (fields['name'], fields['name_el'], fields['description'], fields['description_el'],
+                 fields['price'], fields['stock_quantity'], fields['category'], image_path, product_id)
+            )
+        flash(_('Product updated successfully!'), 'success')
+        return redirect(url_for('admin.products'))
+    except Exception:
+        current_app.logger.exception('Editing product %s failed', product_id)
+        flash(_('An unexpected error occurred. Please try again.'), 'danger')
         return redirect(url_for('admin.products'))
 
 
@@ -182,28 +184,53 @@ def delete_product(product_id):
                 flash(_('Cannot delete product that has been ordered. Consider archiving instead.'), 'danger')
             else:
                 cur.execute("DELETE FROM products WHERE product_id = ?", (product_id,))
-                flash(_('Product deleted successfully!'), 'success')
-    except Exception as e:
-        flash(_('Error deleting product: {error}', error=str(e)), 'danger')
+                if cur.rowcount:
+                    flash(_('Product deleted successfully!'), 'success')
+                else:
+                    flash(_('Product not found'), 'danger')
+    except Exception:
+        current_app.logger.exception('Deleting product %s failed', product_id)
+        flash(_('An unexpected error occurred. Please try again.'), 'danger')
 
     return redirect(url_for('admin.products'))
 
 
 @bp.route('/update_order/<int:order_id>', methods=['POST'])
 def update_order_status(order_id):
+    data = request.get_json(silent=True) or {}
+    new_status = data.get('status')
+    if new_status not in ORDER_STATUSES:
+        return jsonify({'success': False, 'error': _('Invalid status')}), 400
+
     try:
-        data = request.get_json()
-        new_status = data.get('status')
-
-        if new_status not in ORDER_STATUSES:
-            return jsonify({'success': False, 'error': _('Invalid status')})
-
         with get_cursor() as cur:
-            cur.execute(
-                "UPDATE orders SET status = ? WHERE order_id = ?",
-                (new_status, order_id)
-            )
+            cur.execute("SELECT status FROM orders WHERE order_id = ?", (order_id,))
+            order = cur.fetchone()
+            if not order:
+                return jsonify({'success': False, 'error': _('Order not found')}), 404
+
+            old_status = order['status']
+            cur.execute("SELECT product_id, quantity FROM order_items WHERE order_id = ?", (order_id,))
+            items = cur.fetchall()
+
+            # Cancelling puts the items back in stock; reopening a cancelled order takes them out again
+            if new_status == 'cancelled' and old_status != 'cancelled':
+                for item in items:
+                    cur.execute("UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?",
+                                (item['quantity'], item['product_id']))
+            elif old_status == 'cancelled' and new_status != 'cancelled':
+                for item in items:
+                    cur.execute("""UPDATE products SET stock_quantity = stock_quantity - ?
+                                   WHERE product_id = ? AND stock_quantity >= ?""",
+                                (item['quantity'], item['product_id'], item['quantity']))
+                    if cur.rowcount != 1:
+                        raise NotEnoughStock()
+
+            cur.execute("UPDATE orders SET status = ? WHERE order_id = ?", (new_status, order_id))
 
         return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+    except NotEnoughStock:
+        return jsonify({'success': False, 'error': _('Not enough stock to reopen this order')}), 409
+    except Exception:
+        current_app.logger.exception('Updating order %s failed', order_id)
+        return jsonify({'success': False, 'error': _('Error updating order status')}), 500

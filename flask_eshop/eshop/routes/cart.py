@@ -100,7 +100,9 @@ def save_cart(cart):
 
 @bp.route('/add_to_cart', methods=['POST'])
 def add_to_cart():
-    product_id = request.form.get('product_id')
+    product_id = request.form.get('product_id', '').strip()
+    # Cart keys are the plain id, so '05' and '5' can't become two cart lines
+    product_id = str(int(product_id)) if product_id.isdigit() else None
     try:
         quantity = int(request.form.get('quantity', 1))
     except ValueError:
@@ -162,8 +164,9 @@ def add_to_cart():
         flash(_('Item added to cart!'), 'success')
         return redirect(request.referrer or url_for('main.home'))
 
-    except Exception as e:
-        return fail(_('Error: {error}', error=str(e)), _('Error adding to cart: {error}', error=str(e)))
+    except Exception:
+        current_app.logger.exception('Adding product %s to the cart failed', product_id)
+        return fail(_('An unexpected error occurred. Please try again.'))
 
 
 @bp.route('/update_cart', methods=['POST'])
@@ -202,8 +205,9 @@ def update_cart():
         save_cart(cart)
         return cart_response(True, message)
 
-    except Exception as e:
-        return cart_response(False, _('Error updating cart: {error}', error=str(e)))
+    except Exception:
+        current_app.logger.exception('Updating the cart failed')
+        return cart_response(False, _('An unexpected error occurred. Please try again.'))
 
 
 @bp.route('/remove_from_cart', methods=['POST'])
@@ -234,8 +238,9 @@ def view_cart():
 
         return render_template("cart/cart.html", cart_items=cart_items, totals=cart_totals(subtotal))
 
-    except Exception as e:
-        flash(_('Error loading cart: {error}', error=str(e)), 'danger')
+    except Exception:
+        current_app.logger.exception('Loading the cart failed')
+        flash(_('An unexpected error occurred. Please try again.'), 'danger')
         # If there's an error, clear the cart to prevent further issues
         session.pop('cart', None)
         return render_template("cart/cart.html", cart_items=[], totals=cart_totals(0))
@@ -260,7 +265,8 @@ def checkout():
         product_ids = [int(pid) for pid in cart.keys()]
 
         db = get_db()
-        db.execute("BEGIN TRANSACTION")
+        # IMMEDIATE takes the write lock now, so two checkouts can't both sell the last units
+        db.execute("BEGIN IMMEDIATE")
 
         try:
             cur = db.cursor()
@@ -272,7 +278,7 @@ def checkout():
             )
             products = {str(row['product_id']): dict(row) for row in cur.fetchall()}
 
-            total = 0
+            subtotal = 0
             insufficient_stock = []
 
             # Check stock availability and calculate total
@@ -285,14 +291,15 @@ def checkout():
                 product = products[pid]
                 if product['stock_quantity'] < qty:
                     insufficient_stock.append(_('{name} (available: {n})', name=localized(product, 'name'), n=product['stock_quantity']))
-                total += product['price'] * qty
+                subtotal += product['price'] * qty
 
             if insufficient_stock:
                 db.rollback()
                 flash(_('Insufficient stock for: {items}', items=', '.join(insufficient_stock)), 'danger')
                 return redirect(url_for('cart.view_cart'))
 
-            # Create order
+            # The order total is what the customer was shown: subtotal + shipping + tax
+            total = cart_totals(subtotal)['total']
             cur.execute(
                 "INSERT INTO orders (user_id, total) VALUES (?, ?)",
                 (user_id, total)
@@ -309,9 +316,11 @@ def checkout():
                     (order_id, int(pid), qty, product['price'])
                 )
                 cur.execute(
-                    "UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?",
-                    (qty, int(pid))
+                    "UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ? AND stock_quantity >= ?",
+                    (qty, int(pid), qty)
                 )
+                if cur.rowcount != 1:
+                    raise RuntimeError(f"Stock for product {pid} changed during checkout")
 
             db.commit()
 
@@ -326,6 +335,7 @@ def checkout():
             db.rollback()
             raise e
 
-    except Exception as e:
-        flash(_('Checkout failed: {error}', error=str(e)), 'danger')
+    except Exception:
+        current_app.logger.exception('Checkout failed')
+        flash(_('Checkout failed and no order was placed. Please try again.'), 'danger')
         return redirect(url_for('cart.view_cart'))

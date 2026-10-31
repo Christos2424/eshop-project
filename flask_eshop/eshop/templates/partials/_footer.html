@@ -24,7 +24,10 @@
                 <a href="{{ url_for('cart.view_cart') }}">{{ _('Shopping Cart') }}</a>
                 {% if session.user_id %}
                     <a href="{{ url_for('orders.user_orders') }}">{{ _('All Orders') if session.role == 'admin' else _('My Orders') }}</a>
-                    <a href="{{ url_for('auth.logout') }}">{{ _('Logout') }}</a>
+                    <form method="POST" action="{{ url_for('auth.logout') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="footer-link-button">{{ _('Logout') }}</button>
+                    </form>
                 {% else %}
                     <a href="{{ url_for('auth.login') }}">{{ _('Login') }}</a>
                     <a href="{{ url_for('auth.register') }}">{{ _('Register') }}</a>

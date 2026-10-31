@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert(t('Order #{id} status updated to {status}', { id: orderId, status: statusText }));
                     location.reload();
                 } else {
-                    alert(t('Error updating order status'));
+                    alert(data.error || t('Error updating order status'));
                 }
             })
             .catch(error => {

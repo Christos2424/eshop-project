@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'shop/_product_card.html' import product_image with context %}
 
 {% block title %}{{ _('Manage Products') }} - eShop Admin{% endblock %}
 
@@ -103,9 +104,7 @@
                         </td>
                         <td class="image-cell">
                             <div class="image-wrapper">
-                                <img src="{{ get_image_url(product.image_url) }}"
-                                     alt="{{ name }}"
-                                     class="table-image">
+                                {{ product_image(product, 'table-image') }}
                                 {% if product.stock_quantity == 0 %}
                                 <div class="status-badge out-of-stock">{{ _('Out') }}</div>
                                 {% elif product.stock_quantity < 10 %}

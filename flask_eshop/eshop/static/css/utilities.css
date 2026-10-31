@@ -28,12 +28,12 @@
 .btn-primary {
     background: var(--primary);
     color: #fff;
-    box-shadow: 0 1px 2px rgba(79, 70, 229, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    box-shadow: 0 1px 2px rgba(var(--primary-rgb), 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .btn-primary:hover:not(:disabled) {
     background: var(--primary-600);
-    box-shadow: 0 6px 16px -4px rgba(79, 70, 229, 0.5);
+    box-shadow: 0 6px 16px -4px rgba(var(--primary-rgb), 0.5);
 }
 
 .btn-secondary {
@@ -43,7 +43,7 @@
 }
 
 .btn-secondary:hover:not(:disabled) {
-    background: #e7eaf2;
+    background: var(--surface-3);
 }
 
 .btn-outline {
@@ -165,7 +165,7 @@
 }
 
 .badge-dark {
-    background: rgba(15, 23, 42, 0.85);
+    background: rgba(var(--ink-rgb), 0.85);
     color: #fff;
 }
 
@@ -234,11 +234,11 @@
 /* Category icon, coloured with the category's --hue */
 .chip-icon {
     font-size: 0.8rem;
-    color: hsl(var(--hue, 245) 60% 52%);
+    color: hsl(var(--hue, 210) 30% 45%);
 }
 
 .chip.active .chip-icon {
-    color: hsl(var(--hue, 245) 90% 80%);
+    color: hsl(var(--hue, 210) 35% 82%);
 }
 
 /* Status pills (orders) */
@@ -314,9 +314,9 @@
 }
 
 .flash-info {
-    background: #eff6ff;
-    color: #1e40af;
-    border-color: #bfdbfe;
+    background: var(--primary-50);
+    color: var(--primary-700);
+    border-color: var(--primary-100);
 }
 
 .flash.is-leaving {
@@ -344,7 +344,7 @@
     gap: 0.75rem;
     padding: 0.85rem 0.9rem 0.85rem 1rem;
     background: var(--ink);
-    color: #f8fafc;
+    color: var(--on-dark);
     border-radius: 14px;
     box-shadow: var(--shadow-lg);
     font-size: 0.9rem;
@@ -371,7 +371,7 @@
 .toast-success .toast-icon { background: rgba(16, 185, 129, 0.2); color: #34d399; }
 .toast-error .toast-icon { background: rgba(239, 68, 68, 0.2); color: #f87171; }
 .toast-warning .toast-icon { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-.toast-info .toast-icon { background: rgba(99, 102, 241, 0.25); color: #a5b4fc; }
+.toast-info .toast-icon { background: rgba(var(--accent-rgb), 0.25); color: var(--accent-light); }
 
 .toast-message {
     flex: 1;
@@ -381,7 +381,7 @@
 .toast-action {
     background: none;
     border: none;
-    color: #a5b4fc;
+    color: var(--accent-light);
     font-weight: 700;
     font-size: 0.85rem;
     cursor: pointer;
@@ -395,7 +395,7 @@
 .toast-close {
     background: none;
     border: none;
-    color: #94a3b8;
+    color: var(--on-dark-muted);
     padding: 0.25rem;
     cursor: pointer;
 }
@@ -417,7 +417,7 @@
     display: grid;
     place-items: center;
     padding: 1rem;
-    background: rgba(15, 23, 42, 0.5);
+    background: rgba(var(--ink-rgb), 0.5);
     backdrop-filter: blur(4px);
     animation: fadeOnly 0.2s ease;
 }
@@ -470,8 +470,8 @@
     height: 3px;
     width: 0;
     opacity: 0;
-    background: linear-gradient(90deg, var(--primary), #a855f7, #ec4899);
-    box-shadow: 0 0 10px rgba(79, 70, 229, 0.6);
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.6);
     pointer-events: none;
 }
 
@@ -489,7 +489,7 @@
 
 /* Skeleton placeholder while content loads */
 .skeleton {
-    background: linear-gradient(90deg, var(--surface-2) 0px, #e8ebf3 120px, var(--surface-2) 240px);
+    background: linear-gradient(90deg, var(--surface-2) 0px, var(--surface-3) 120px, var(--surface-2) 240px);
     background-size: 800px 100%;
     animation: shimmer 1.2s linear infinite;
     border-radius: var(--radius-sm);
@@ -497,17 +497,17 @@
 
 /* Product image placeholder when there is no image; --hue is set per category */
 .img-placeholder {
-    --hue: 245;
+    --hue: 210;
     display: grid;
     place-items: center;
     width: 100%;
     height: 100%;
-    color: hsl(var(--hue) 55% 62%);
+    color: hsl(var(--hue) 25% 52%);
     font-size: 2rem;
     background:
         radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.9), transparent 60%),
-        radial-gradient(circle at 80% 90%, hsl(var(--hue) 85% 88% / 0.7), transparent 55%),
-        linear-gradient(135deg, hsl(var(--hue) 90% 97%) 0%, hsl(calc(var(--hue) + 25) 80% 93%) 100%);
+        radial-gradient(circle at 80% 90%, hsl(var(--hue) 30% 86% / 0.7), transparent 55%),
+        linear-gradient(135deg, hsl(var(--hue) 25% 97%) 0%, hsl(calc(var(--hue) + 15) 22% 92%) 100%);
     /* Image rules (e.g. .card-image) blend photos into the frame; not the placeholder */
     mix-blend-mode: normal !important;
 }

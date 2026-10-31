@@ -473,7 +473,7 @@ function fadeOut(element) {
 
 // ---------- Images ----------
 
-// Broken product images become the placeholder icon (or placeholder.png elsewhere)
+// Broken product images become the placeholder icon (or placeholder.svg elsewhere)
 function initImageFallback() {
     document.addEventListener('error', function(e) {
         const img = e.target;

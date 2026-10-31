@@ -1,6 +1,7 @@
 import json
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, session
+from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, current_app, session
+from werkzeug.exceptions import HTTPException
 
 from ..db import get_cursor, get_categories
 from ..i18n import LANGUAGES, catalogs, category_label, fold, gettext as _, name_sql
@@ -25,12 +26,21 @@ FILTER_DEFAULTS = {'q': '', 'category': '', 'stock': 'all', 'sort': 'newest', 'm
 STOCK_LABELS = {'in_stock': 'In stock', 'out_of_stock': 'Out of stock'}
 
 
+LIKE_ESCAPE = "ESCAPE '\\'"
+
+
+def escape_like(text):
+    """Make % and _ in a search match themselves instead of acting as LIKE wildcards"""
+    return text.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+
+
 def search_condition(query):
     """SQL condition and params matching a search box query against the English and Greek
     names and the category (in either language), ignoring case and accents"""
     folded = fold(query)
-    like = f'%{folded}%'
-    conditions = ["fold(name) LIKE ?", "fold(name_el) LIKE ?", "fold(category) LIKE ?"]
+    like = f'%{escape_like(folded)}%'
+    conditions = [f"fold(name) LIKE ? {LIKE_ESCAPE}", f"fold(name_el) LIKE ? {LIKE_ESCAPE}",
+                  f"fold(category) LIKE ? {LIKE_ESCAPE}"]
     params = [like, like, like]
 
     # Categories are stored in English: also match their translated names (e.g. 'βιβλ' finds Books)
@@ -130,8 +140,9 @@ def home():
         with get_cursor() as cur:
             cur.execute("SELECT COUNT(*) FROM products")
             context['store_total'] = cur.fetchone()[0]
-    except Exception as e:
-        flash(_('Error loading products: {error}', error=str(e)), 'danger')
+    except Exception:
+        current_app.logger.exception('Loading products failed')
+        flash(_('An unexpected error occurred. Please try again.'), 'danger')
 
     # The shop page's JavaScript fetches only the results block when filters change
     if is_ajax():
@@ -161,8 +172,7 @@ def product_detail(product_id):
             product = cur.fetchone()
 
             if not product:
-                flash(_('Product not found'), 'danger')
-                return redirect(url_for('main.home'))
+                abort(404)
 
             # Suggest products from the same category first, then the newest others
             cur.execute("""
@@ -174,8 +184,11 @@ def product_detail(product_id):
 
         return render_template('shop/product.html', product=product, related=related)
 
-    except Exception as e:
-        flash(_('Error loading product: {error}', error=str(e)), 'danger')
+    except HTTPException:
+        raise
+    except Exception:
+        current_app.logger.exception('Loading product %s failed', product_id)
+        flash(_('An unexpected error occurred. Please try again.'), 'danger')
         return redirect(url_for('main.home'))
 
 
