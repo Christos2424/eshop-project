@@ -151,7 +151,7 @@ def update_cart():
 def view_cart():
     cart = session.get("cart")
     if not cart:
-        return render_template("cart.html", cart_items=[], total=0)
+        return render_template("cart/cart.html", cart_items=[], total=0)
 
     try:
         cart_items, total, missing_ids = load_cart_items(cart)
@@ -164,13 +164,13 @@ def view_cart():
             session.modified = True
             flash("Some items in your cart are no longer available and have been removed.", "warning")
 
-        return render_template("cart.html", cart_items=cart_items, total=total)
+        return render_template("cart/cart.html", cart_items=cart_items, total=total)
 
     except Exception as e:
         flash(f"Error loading cart: {str(e)}", "danger")
         # If there's an error, clear the cart to prevent further issues
         session.pop('cart', None)
-        return render_template("cart.html", cart_items=[], total=0)
+        return render_template("cart/cart.html", cart_items=[], total=0)
 
 
 @bp.route('/remove_from_cart', methods=['POST'])
@@ -197,7 +197,7 @@ def checkout():
     if request.method == 'GET':
         # Show checkout page with totals
         cart_items, total, _ = load_cart_items(cart)
-        return render_template('checkout.html', cart_items=cart_items, total=total)
+        return render_template('cart/checkout.html', cart_items=cart_items, total=total)
 
     # POST request - process the actual checkout
     try:

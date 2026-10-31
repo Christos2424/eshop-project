@@ -1,63 +1,10 @@
-// Product Detail Page JavaScript
+// Admin Products Page JavaScript
 document.addEventListener('DOMContentLoaded', function() {
-    // Quantity Controls
-    function decreaseQuantity() {
-        const input = document.getElementById('quantity');
-        if (parseInt(input.value) > 1) {
-            input.value = parseInt(input.value) - 1;
-        }
-    }
-
-    function increaseQuantity() {
-        const input = document.getElementById('quantity');
-        const max = parseInt(input.max);
-        if (parseInt(input.value) < max) {
-            input.value = parseInt(input.value) + 1;
-        }
-    }
-
-    // Tab Functionality
-    const tabBtns = document.querySelectorAll('.tab-btn');
-    const tabPanes = document.querySelectorAll('.tab-pane');
-    
-    if (tabBtns.length > 0) {
-        tabBtns.forEach(btn => {
-            btn.addEventListener('click', function() {
-                const tabId = this.dataset.tab;
-                
-                // Remove active class from all buttons and panes
-                tabBtns.forEach(b => b.classList.remove('active'));
-                tabPanes.forEach(p => p.classList.remove('active'));
-                
-                // Add active class to current button and pane
-                this.classList.add('active');
-                document.getElementById(tabId).classList.add('active');
-            });
-        });
-    }
-
-    // Add to Cart Animation for product detail page
-    const addToCartForm = document.querySelector('.add-to-cart-form');
-    if (addToCartForm) {
-        addToCartForm.addEventListener('submit', function(e) {
-            const button = this.querySelector('.btn-add-to-cart');
-            const originalText = button.innerHTML;
-            
-            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
-            button.disabled = true;
-            
-            setTimeout(() => {
-                button.innerHTML = originalText;
-                button.disabled = false;
-            }, 1000);
-        });
-    }
-
-    // Admin Products Page Filtering and Sorting
+    // Products Filtering and Sorting
     const productsTableBody = document.getElementById('productsTableBody');
     if (productsTableBody) {
         const productRows = Array.from(productsTableBody.querySelectorAll('.data-row'));
-        
+
         let activeProductFilters = {
             stock: 'all',
             sort: 'id_asc'
@@ -71,9 +18,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Get current filter values
             activeProductFilters.stock = document.getElementById('stockFilter').value;
             activeProductFilters.sort = document.getElementById('productSortBy').value;
-            
+
             let filteredRows = [...productRows];
-            
+
             // Apply stock filter
             if (activeProductFilters.stock !== 'all') {
                 filteredRows = filteredRows.filter(row => {
@@ -84,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return true;
                 });
             }
-            
+
             // Apply sorting
             filteredRows.sort((a, b) => {
                 switch (activeProductFilters.sort) {
@@ -104,7 +51,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         return parseInt(a.dataset.id) - parseInt(b.dataset.id);
                 }
             });
-            
+
             // Update table
             updateProductsTable(filteredRows);
         }
@@ -132,19 +79,3 @@ document.addEventListener('DOMContentLoaded', function() {
         applyProductFilters();
     }
 });
-
-// Expose functions for global use (for inline event handlers in product.html)
-window.decreaseQuantity = function() {
-    const input = document.getElementById('quantity');
-    if (parseInt(input.value) > 1) {
-        input.value = parseInt(input.value) - 1;
-    }
-};
-
-window.increaseQuantity = function() {
-    const input = document.getElementById('quantity');
-    const max = parseInt(input.max);
-    if (parseInt(input.value) < max) {
-        input.value = parseInt(input.value) + 1;
-    }
-};

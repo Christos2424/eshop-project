@@ -73,20 +73,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Order management functions
-    window.viewOrderDetails = function(orderId) {
-        alert('Viewing details for order #' + orderId);
-        // In a real implementation, this would open a modal or redirect to order details
-        // window.location.href = `/order/${orderId}`;
-    };
-
     window.updateOrderStatus = function(orderId, status) {
         const statusText = status.charAt(0).toUpperCase() + status.slice(1);
         if (confirm(`Are you sure you want to update order #${orderId} to "${statusText}"?`)) {
-            // In a real implementation, this would make an AJAX call to update the order status
             fetch(`/admin/update_order/${orderId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
                 },
                 body: JSON.stringify({ status: status })
             })

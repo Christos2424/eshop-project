@@ -5,6 +5,12 @@ let lastScrollY = window.scrollY;
 let ticking = false;
 let isHeaderHidden = false;
 
+// CSRF token for AJAX requests (set in base.html <meta name="csrf-token">)
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.content : '';
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize all functionality
     initScrollHeader();
@@ -329,7 +335,8 @@ function handleAddToCart(e) {
         method: 'POST',
         body: formData,
         headers: {
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCsrfToken()
         }
     })
     .then(response => {

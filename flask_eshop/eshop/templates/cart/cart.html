@@ -59,6 +59,7 @@
                             <td>
                                 <div class="quantity-controls">
                                     <form action="{{ url_for('cart.update_cart') }}" method="post" style="display: inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="hidden" name="product_id" value="{{ item.product.product_id }}">
                                         <input type="hidden" name="quantity" value="{{ item.quantity - 1 }}">
                                         <button type="submit" class="quantity-btn" {{ 'disabled' if item.quantity <= 1 }}>
@@ -67,6 +68,7 @@
                                     </form>
                                     <span class="quantity-display">{{ item.quantity }}</span>
                                     <form action="{{ url_for('cart.update_cart') }}" method="post" style="display: inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="hidden" name="product_id" value="{{ item.product.product_id }}">
                                         <input type="hidden" name="quantity" value="{{ item.quantity + 1 }}">
                                         <button type="submit" class="quantity-btn" {{ 'disabled' if item.quantity >= item.product.stock_quantity }}>
@@ -78,6 +80,7 @@
                             <td class="item-total">${{ "%.2f"|format(item.total) }}</td>
                             <td>
                                 <form action="{{ url_for('cart.remove_from_cart') }}" method="post" class="remove-form" onsubmit="updateCartCountOnRemove({{ item.quantity }})">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="product_id" value="{{ item.product.product_id }}">
                                     <button type="submit" class="btn btn-sm btn-danger">
                                         <i class="fas fa-trash"></i> Remove
@@ -120,6 +123,7 @@
                     {% if session.user_id %}
                         <!-- User is logged in - show checkout button -->
                         <form action="{{ url_for('cart.checkout') }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-primary btn-lg">
                                 <i class="fas fa-credit-card"></i> Proceed to Checkout
                             </button>
@@ -145,9 +149,8 @@
         </div>
     {% endif %}
 </div>
+{% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/cart.js') }}"></script>
-{% endblock %}
-
 {% endblock %}

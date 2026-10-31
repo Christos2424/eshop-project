@@ -1,3 +1,5 @@
+import os
+import secrets
 import sqlite3
 from contextlib import contextmanager
 
@@ -111,10 +113,14 @@ def init_db(database):
     # Create admin user if it doesn't exist
     cursor.execute("SELECT 1 FROM users WHERE username = 'admin'")
     if not cursor.fetchone():
+        admin_email = os.environ.get('ADMIN_EMAIL', 'admin@eshop.com')
+        admin_password = os.environ.get('ADMIN_PASSWORD') or secrets.token_urlsafe(12)
         cursor.execute('''
             INSERT OR IGNORE INTO users (username, email, password_hash, role)
             VALUES (?, ?, ?, ?)
-        ''', ('admin', 'admin@eshop.com', hash_password('admin123'), 'admin'))
+        ''', ('admin', admin_email, hash_password(admin_password), 'admin'))
+        if not os.environ.get('ADMIN_PASSWORD'):
+            click.echo(f"Created admin account {admin_email} with password: {admin_password}")
 
     # Check if products table is empty and insert sample data
     cursor.execute("SELECT COUNT(*) as count FROM products")
@@ -146,8 +152,23 @@ def init_db_command():
     click.echo('Database initialized successfully!')
 
 
+@click.command('set-password')
+@click.argument('email')
+@click.password_option()
+def set_password_command(email, password):
+    """Change the password of the user with this email."""
+    with get_cursor() as cur:
+        cur.execute("UPDATE users SET password_hash = ? WHERE email = ?", (hash_password(password), email))
+        updated = cur.rowcount
+    if updated:
+        click.echo(f"Password updated for {email}")
+    else:
+        raise click.ClickException(f"No user with email {email}")
+
+
 def init_app(app):
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
+    app.cli.add_command(set_password_command)
     # Always ensure tables exist
     init_db(app.config['DATABASE'])

@@ -6,6 +6,7 @@
     <div class="auth-form">
         <h2>Login</h2>
         <form method="POST" action="{{ url_for('auth.login') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <!-- Add hidden field to redirect back to cart after login -->
             <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
             
