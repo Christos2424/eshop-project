@@ -3,9 +3,10 @@ import json
 from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, current_app, session
 from werkzeug.exceptions import HTTPException
 
-from ..db import get_cursor, get_categories
+from ..db import RATING_COLUMNS, get_cursor, get_categories
 from ..i18n import LANGUAGES, catalogs, category_label, fold, gettext as _, name_sql
 from ..utils import is_ajax, is_safe_redirect
+from .reviews import load_reviews
 
 bp = Blueprint('main', __name__)
 
@@ -17,7 +18,8 @@ SORT_MAP = {
     'price_low': 'price ASC',
     'price_high': 'price DESC',
     'name_az': 'fold({name}) ASC',
-    'name_za': 'fold({name}) DESC'
+    'name_za': 'fold({name}) DESC',
+    'top_rated': 'rating DESC, review_count DESC'
 }
 
 # Filter values that mean "no filter", left out of URLs
@@ -67,8 +69,8 @@ def filter_pills(filters):
         'q': lambda v: _('Search: {query}', query=v),
         'category': category_label,
         'stock': lambda v: _(STOCK_LABELS[v]) if v in STOCK_LABELS else None,
-        'min_price': lambda v: _('From ${price}', price=v),
-        'max_price': lambda v: _('Up to ${price}', price=v),
+        'min_price': lambda v: _('From €{price}', price=v),
+        'max_price': lambda v: _('Up to €{price}', price=v),
     }
     params = active_params(filters)
     pills = []
@@ -116,7 +118,7 @@ def query_products(filters, page, per_page):
         total = cur.fetchone()[0]
 
         cur.execute(
-            f"SELECT * FROM products{where_clause} ORDER BY {sort_clause}, product_id DESC LIMIT ? OFFSET ?",
+            f"SELECT *, {RATING_COLUMNS} FROM products{where_clause} ORDER BY {sort_clause}, product_id DESC LIMIT ? OFFSET ?",
             params + [per_page, (page - 1) * per_page]
         )
         products = cur.fetchall()
@@ -175,14 +177,16 @@ def product_detail(product_id):
                 abort(404)
 
             # Suggest products from the same category first, then the newest others
-            cur.execute("""
-                SELECT * FROM products WHERE product_id != ?
+            cur.execute(f"""
+                SELECT *, {RATING_COLUMNS} FROM products WHERE product_id != ?
                 ORDER BY (category = ?) DESC, stock_quantity > 0 DESC, created_at DESC
                 LIMIT 4
             """, (product_id, product['category']))
             related = cur.fetchall()
 
-        return render_template('shop/product.html', product=product, related=related)
+        reviews, review_summary, own_review = load_reviews(product_id)
+        return render_template('shop/product.html', product=product, related=related,
+                               reviews=reviews, review_summary=review_summary, own_review=own_review)
 
     except HTTPException:
         raise

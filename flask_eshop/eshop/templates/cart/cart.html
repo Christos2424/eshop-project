@@ -17,7 +17,7 @@
 
     {% if cart_items %}
     <div class="cart-layout" id="cartLayout">
-        <!-- Quantity and remove forms work without JavaScript; cart.js submits them with AJAX -->
+        <!-- Quantity forms work without JavaScript (quantity 0 removes the item); cart.js submits them with AJAX -->
         <section class="cart-items" aria-label="{{ _('Cart items') }}">
             {% for item in cart_items %}
             {% set product = item.product %}
@@ -41,7 +41,9 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="product_id" value="{{ product.product_id }}">
                         <input type="hidden" name="quantity" value="{{ item.quantity - 1 }}">
-                        <button type="submit" class="qty-btn" aria-label="{{ _('Decrease quantity') }}" {{ 'disabled' if item.quantity <= 1 }}>
+                        {# At 1 the minus button removes the item #}
+                        <button type="submit" class="qty-btn" data-remove-label="{{ _('Remove {name}', name=name) }}"
+                                aria-label="{{ _('Remove {name}', name=name) if item.quantity <= 1 else _('Decrease quantity') }}">
                             <i class="fas fa-minus"></i>
                         </button>
                     </form>
@@ -57,14 +59,6 @@
                 </div>
 
                 <div class="cart-item-total" data-line-total>{{ item.total|currency }}</div>
-
-                <form action="{{ url_for('cart.remove_from_cart') }}" method="post" class="cart-remove-form">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="product_id" value="{{ product.product_id }}">
-                    <button type="submit" class="icon-btn remove-btn" aria-label="{{ _('Remove {name}', name=name) }}" title="{{ _('Remove') }}">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
-                </form>
             </article>
             {% endfor %}
         </section>

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from 'shop/_product_card.html' import product_card, product_image with context %}
+{% from 'shop/_stars.html' import stars with context %}
 
 {% set name = product|localized('name') %}
 {% set description = product|localized('description') %}
@@ -41,6 +42,17 @@
                 {{ category_label(product.category) }}
             </a>
             <h1 class="product-title">{{ name }}</h1>
+
+            <a href="#reviews" class="product-rating-link" data-open-reviews>
+                {% if review_summary.count %}
+                {{ stars(review_summary.average) }}
+                <strong>{{ review_summary.average }}</strong>
+                <span>{{ ngettext('{n} review', '{n} reviews', review_summary.count) }}</span>
+                {% else %}
+                {{ stars(0) }}
+                <span>{{ _('Be the first to review') }}</span>
+                {% endif %}
+            </a>
 
             <div class="product-price-row">
                 <span class="product-price">{{ product.price|currency }}</span>
@@ -104,7 +116,7 @@
             <ul class="product-perks">
                 <li>
                     <span class="perk-icon"><i class="fas fa-shipping-fast"></i></span>
-                    <div><strong>{{ _('Free shipping') }}</strong><span>{{ _('On orders over ${amount}', amount=config.FREE_SHIPPING_THRESHOLD) }}</span></div>
+                    <div><strong>{{ _('Free shipping') }}</strong><span>{{ _('On orders over €{amount}', amount=config.FREE_SHIPPING_THRESHOLD) }}</span></div>
                 </li>
                 <li>
                     <span class="perk-icon"><i class="fas fa-undo"></i></span>
@@ -124,7 +136,9 @@
             <button type="button" class="tab-btn active" role="tab" id="tab-description" aria-controls="description" aria-selected="true">{{ _('Description') }}</button>
             <button type="button" class="tab-btn" role="tab" id="tab-specifications" aria-controls="specifications" aria-selected="false" tabindex="-1">{{ _('Specifications') }}</button>
             <button type="button" class="tab-btn" role="tab" id="tab-shipping" aria-controls="shipping" aria-selected="false" tabindex="-1">{{ _('Shipping & Returns') }}</button>
-            <button type="button" class="tab-btn" role="tab" id="tab-reviews" aria-controls="reviews" aria-selected="false" tabindex="-1">{{ _('Reviews') }}</button>
+            <button type="button" class="tab-btn" role="tab" id="tab-reviews" aria-controls="reviews" aria-selected="false" tabindex="-1">
+                {{ _('Reviews') }} <span class="tab-count">{{ review_summary.count }}</span>
+            </button>
         </div>
 
         <div class="tabs-content">
@@ -148,8 +162,8 @@
                     <div>
                         <h4><i class="fas fa-shipping-fast"></i> {{ _('Shipping') }}</h4>
                         <ul>
-                            <li>{{ _('Free standard shipping on orders over ${amount}', amount=config.FREE_SHIPPING_THRESHOLD) }}</li>
-                            <li>{{ _('Express shipping available for $9.99') }}</li>
+                            <li>{{ _('Free standard shipping on orders over €{amount}', amount=config.FREE_SHIPPING_THRESHOLD) }}</li>
+                            <li>{{ _('Express shipping available for €9.99') }}</li>
                             <li>{{ _('Usually ships within 1-2 business days') }}</li>
                         </ul>
                     </div>
@@ -165,9 +179,124 @@
             </div>
 
             <div class="tab-pane" id="reviews" role="tabpanel" aria-labelledby="tab-reviews" hidden>
-                <div class="reviews-placeholder">
-                    <i class="far fa-comments"></i>
-                    <p>{{ _('No reviews yet for this product.') }}</p>
+                <div class="reviews-layout">
+                    <aside class="reviews-summary">
+                        <div class="reviews-average">
+                            <span class="reviews-average-value">{{ review_summary.average if review_summary.count else '–' }}</span>
+                            <div>
+                                {{ stars(review_summary.average) }}
+                                <span class="reviews-total">{{ ngettext('Based on {n} review', 'Based on {n} reviews', review_summary.count) }}</span>
+                            </div>
+                        </div>
+
+                        <ul class="rating-bars">
+                            {% for row in review_summary.breakdown %}
+                            <li>
+                                <span class="rating-bar-label">{{ row.stars }} <i class="fas fa-star"></i></span>
+                                <span class="rating-bar" aria-hidden="true"><span style="width: {{ row.percent }}%"></span></span>
+                                <span class="rating-bar-count">{{ row.count }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </aside>
+
+                    <div class="reviews-main">
+                        {% if session.user_id %}
+                        {% set review_form %}
+                        <form action="{{ url_for('reviews.save_review', product_id=product.product_id) }}" method="post" class="review-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                            <fieldset class="star-input">
+                                <legend>{{ _('Your rating') }}</legend>
+                                <div class="star-input-options">
+                                    {# Highest first: with row-reverse, hovering a star also lights the ones before it #}
+                                    {% for n in range(5, 0, -1) %}
+                                    <input type="radio" id="rating-{{ n }}" name="rating" value="{{ n }}" class="visually-hidden" required
+                                           {{ 'checked' if own_review and own_review.rating == n }}>
+                                    <label for="rating-{{ n }}" title="{{ ngettext('{n} star', '{n} stars', n) }}">
+                                        <i class="fas fa-star"></i>
+                                        <span class="visually-hidden">{{ ngettext('{n} star', '{n} stars', n) }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </fieldset>
+
+                            <div class="form-group">
+                                <label for="review-title">{{ _('Title') }} <span class="optional-tag">{{ _('optional') }}</span></label>
+                                <input type="text" id="review-title" name="title" maxlength="100"
+                                       value="{{ own_review.title or '' if own_review }}" placeholder="{{ _('Sum it up in a few words') }}">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="review-body">{{ _('Your review') }}</label>
+                                <textarea id="review-body" name="body" rows="4" minlength="10" maxlength="2000" required
+                                          placeholder="{{ _('What did you like or dislike? How did you use it?') }}">{{ own_review.body if own_review }}</textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> {{ _('Update review') if own_review else _('Post review') }}
+                            </button>
+                        </form>
+                        {% endset %}
+
+                        {% if own_review %}
+                        <details class="review-form-box">
+                            <summary><i class="fas fa-pen"></i> {{ _('Edit your review') }}</summary>
+                            {{ review_form }}
+                        </details>
+                        {% else %}
+                        <div class="review-form-box">
+                            <h3>{{ _('Write a review') }}</h3>
+                            {{ review_form }}
+                        </div>
+                        {% endif %}
+                        {% else %}
+                        <div class="review-form-box review-login">
+                            <p>{{ _('Have you used this product? Share your thoughts with other customers.') }}</p>
+                            <a href="{{ url_for('auth.login', next=url_for('main.product_detail', product_id=product.product_id, _anchor='reviews')) }}" class="btn btn-outline">
+                                <i class="fas fa-sign-in-alt"></i> {{ _('Log in to write a review') }}
+                            </a>
+                        </div>
+                        {% endif %}
+
+                        {% if reviews %}
+                        <ol class="review-list">
+                            {% for review in reviews %}
+                            <li class="review{{ ' is-own' if review.user_id == session.user_id }}">
+                                <div class="review-header">
+                                    <span class="review-avatar" aria-hidden="true">{{ review.username[:1]|upper }}</span>
+                                    <div class="review-meta">
+                                        <strong>{{ review.username }}</strong>
+                                        {% if review.verified %}
+                                        <span class="review-verified"><i class="fas fa-check-circle"></i> {{ _('Verified purchase') }}</span>
+                                        {% endif %}
+                                        <span class="review-date">
+                                            {{ review.created_at[:10] }}{% if review.updated_at %} · {{ _('edited') }}{% endif %}
+                                        </span>
+                                    </div>
+                                    {% if review.user_id == session.user_id or session.role == 'admin' %}
+                                    <form action="{{ url_for('reviews.delete_review', review_id=review.review_id) }}" method="post" class="review-delete">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="icon-btn" aria-label="{{ _('Delete review') }}" title="{{ _('Delete review') }}"
+                                                data-confirm="{{ _('Delete this review?') }}">
+                                            <i class="far fa-trash-alt"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                                {{ stars(review.rating) }}
+                                {% if review.title %}<h4 class="review-title">{{ review.title }}</h4>{% endif %}
+                                <p class="review-body">{{ review.body }}</p>
+                            </li>
+                            {% endfor %}
+                        </ol>
+                        {% else %}
+                        <div class="reviews-placeholder">
+                            <i class="far fa-comments"></i>
+                            <p>{{ _('No reviews yet for this product.') }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>

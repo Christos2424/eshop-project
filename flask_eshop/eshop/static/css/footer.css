@@ -81,7 +81,7 @@
     border: 1px solid var(--line-dark);
     border-radius: 999px;
     font-size: 0.8rem;
-    color: #c9d0da;
+    color: #bbbdbc;
 }
 
 .footer-perks i {
@@ -122,7 +122,7 @@
     display: flex;
     gap: 0.75rem;
     font-size: 1.6rem;
-    color: #848e9d;
+    color: #8a9599;
 }
 
 /* Footer Responsive */

@@ -1,4 +1,5 @@
 {# Import with context so the macros can use image_src, csrf_token and the translation helpers #}
+{% from 'shop/_stars.html' import stars with context %}
 
 {% macro product_image(product, class='') %}
     {% set name = product|localized('name') %}
@@ -36,6 +37,15 @@
     <div class="card-body">
         <span class="card-category">{{ category_label(product.category) }}</span>
         <h3 class="card-title"><a href="{{ url }}">{{ name }}</a></h3>
+        {# Only product lists that select RATING_COLUMNS have review_count #}
+        {% if product.review_count is defined %}
+        <div class="card-rating{{ ' is-empty' if not product.review_count }}">
+            {{ stars(product.rating) }}
+            <span class="card-rating-count" title="{{ ngettext('{n} review', '{n} reviews', product.review_count) }}">
+                {%- if product.review_count %}{{ product.rating }} {% endif %}({{ product.review_count }})
+            </span>
+        </div>
+        {% endif %}
         {% if description %}
         <p class="card-desc">{{ description|truncate(80) }}</p>
         {% endif %}

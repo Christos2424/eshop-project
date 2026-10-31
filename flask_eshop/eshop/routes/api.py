@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, url_for, current_app
 
-from ..db import get_cursor
+from ..db import RATING_COLUMNS, get_cursor
 from ..i18n import fold, name_sql
 from ..utils import product_to_dict
 from .main import LIKE_ESCAPE, escape_like, search_condition
@@ -49,7 +49,7 @@ def products():
 
     placeholders = ','.join(['?'] * len(ids))
     with get_cursor() as cur:
-        cur.execute(f"SELECT * FROM products WHERE product_id IN ({placeholders})", ids)
+        cur.execute(f"SELECT *, {RATING_COLUMNS} FROM products WHERE product_id IN ({placeholders})", ids)
         by_id = {product['product_id']: product for product in cur.fetchall()}
 
     return jsonify({'products': [product_to_dict(by_id[pid]) for pid in ids if pid in by_id]})

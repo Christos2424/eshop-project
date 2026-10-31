@@ -1,33 +1,33 @@
 /* Design tokens, reset and page layout */
 :root {
-    /* Palette: #F2F3F5 light, #1C1F26 ink, #3E5C76 primary, #748CAB accent */
-    --bg: #f2f3f5;
+    /* Palette: #F2F0EF light, #BBBDBC silver, #245F73 teal, #733E24 brown */
+    --bg: #f2f0ef;
     --surface: #ffffff;
-    --surface-2: #eceef2;
-    --surface-3: #e2e6eb;
-    --ink: #1c1f26;
-    --ink-2: #39404c;
-    --muted: #5d6878;
-    --line: #dde1e7;
-    --line-strong: #c3cad4;
+    --surface-2: #e9e7e6;
+    --surface-3: #dddbda;
+    --ink: #172a32;
+    --ink-2: #2a3f48;
+    --muted: #55656b;
+    --line: #dad8d7;
+    --line-strong: #bbbdbc;
 
-    --primary: #3e5c76;
-    --primary-600: #344e64;
-    --primary-700: #2a3f51;
-    --primary-50: #edf1f5;
-    --primary-100: #d9e2ea;
-    --accent: #748cab;
-    --accent-light: #a9bbd1;
+    --primary: #245f73;
+    --primary-600: #1d4f60;
+    --primary-700: #173f4d;
+    --primary-50: #e6eff2;
+    --primary-100: #cfe0e6;
+    --accent: #733e24;
+    --accent-light: #bbbdbc;
 
     /* Text and lines on ink backgrounds (footer, toasts) */
-    --on-dark: #f2f3f5;
-    --on-dark-muted: #a3adbb;
-    --line-dark: #2d323c;
+    --on-dark: #f2f0ef;
+    --on-dark-muted: #aab3b6;
+    --line-dark: #2c424b;
 
     /* RGB channels for translucent colours, e.g. rgba(var(--primary-rgb), 0.5) */
-    --primary-rgb: 62, 92, 118;
-    --accent-rgb: 116, 140, 171;
-    --ink-rgb: 28, 31, 38;
+    --primary-rgb: 36, 95, 115;
+    --accent-rgb: 115, 62, 36;
+    --ink-rgb: 23, 42, 50;
 
     --success: #059669;
     --success-50: #ecfdf5;

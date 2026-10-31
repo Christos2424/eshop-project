@@ -50,7 +50,7 @@ function escapeHtml(value) {
 function formatPrice(price) {
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
-        currency: 'USD'
+        currency: 'EUR'
     }).format(price);
 }
 
@@ -638,8 +638,25 @@ function updateCartItem(productId, quantity) {
     return postForm(window.APP_URLS.update_cart, { product_id: productId, quantity });
 }
 
-function removeCartItem(productId) {
-    return postForm(window.APP_URLS.remove_from_cart, { product_id: productId });
+// Pressing minus at quantity 1 removes an item; the toast lets the user put it back
+function showRemovedToast(productId, onRestored) {
+    showToast(t('Item removed from cart'), 'info', 5000, {
+        label: t('Undo'),
+        onClick: async () => {
+            try {
+                const data = await postForm(window.APP_URLS.add_to_cart, { product_id: productId, quantity: 1 });
+                if (!data.success) {
+                    showToast(data.message, 'warning');
+                    return;
+                }
+                updateCartCount(data.cart.count);
+                onRestored(data.cart);
+            } catch (error) {
+                console.error('Error restoring cart item:', error);
+                showToast(t('Could not update your cart. Please try again.'), 'error');
+            }
+        }
+    });
 }
 
 // Fill in [data-cart-field] totals and the free shipping bar inside root
@@ -854,7 +871,8 @@ const CartDrawer = {
                     <a href="${escapeHtml(item.url)}" class="drawer-item-name">${escapeHtml(item.name)}</a>
                     <span class="drawer-item-price">${escapeHtml(t('{price} each', { price: formatPrice(item.price) }))}</span>
                     <div class="drawer-qty">
-                        <button type="button" class="qty-btn" data-drawer-action="decrease" aria-label="${escapeHtml(t('Decrease quantity'))}" ${item.quantity <= 1 ? 'disabled' : ''}>
+                        <button type="button" class="qty-btn" data-drawer-action="decrease"
+                                aria-label="${escapeHtml(item.quantity <= 1 ? t('Remove {name}', { name: item.name }) : t('Decrease quantity'))}">
                             <i class="fas fa-minus"></i>
                         </button>
                         <span class="qty-value">${item.quantity}</span>
@@ -865,7 +883,6 @@ const CartDrawer = {
                 </div>
                 <div class="drawer-item-side">
                     <span class="drawer-item-total">${formatPrice(item.line_total)}</span>
-                    <button type="button" class="drawer-remove" data-drawer-action="remove">${escapeHtml(t('Remove'))}</button>
                 </div>
             </div>`;
         }).join('');
@@ -882,11 +899,12 @@ const CartDrawer = {
 
         row.classList.add('is-updating');
         try {
-            const data = action === 'remove'
-                ? await removeCartItem(productId)
-                : await updateCartItem(productId, quantity + (action === 'increase' ? 1 : -1));
+            const data = await updateCartItem(productId, quantity + (action === 'increase' ? 1 : -1));
             if (!data.success) showToast(data.message, 'warning');
             this.render(data.cart);
+            if (data.success && !data.cart.items.some(item => String(item.id) === productId)) {
+                showRemovedToast(productId, cart => this.render(cart));
+            }
         } catch (error) {
             console.error('Error updating cart:', error);
             row.classList.remove('is-updating');

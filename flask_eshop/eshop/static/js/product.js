@@ -26,6 +26,23 @@ function initTabs() {
         if (focus) tab.focus();
     }
 
+    // Links to #reviews (the rating under the title, and redirects after posting a review) open that tab
+    function openFromHash() {
+        const tab = tabs.find(t => '#' + t.getAttribute('aria-controls') === location.hash);
+        if (!tab) return;
+        activate(tab);
+        document.querySelector('.product-tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    document.querySelectorAll('[data-open-reviews]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            history.replaceState(null, '', '#reviews');
+            openFromHash();
+        });
+    });
+    window.addEventListener('hashchange', openFromHash);
+    openFromHash();
+
     tabs.forEach((tab, i) => {
         tab.addEventListener('click', () => activate(tab));
         tab.addEventListener('keydown', function(e) {

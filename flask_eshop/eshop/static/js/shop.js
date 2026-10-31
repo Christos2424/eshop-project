@@ -138,6 +138,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ---------- Saved for later / recently viewed ----------
 
+    // Same markup as the stars() template macro: full, half and empty stars
+    function starsHtml(rating) {
+        const halves = Math.round((rating || 0) * 2);
+        let icons = '';
+        for (let i = 1; i <= 5; i++) {
+            const icon = halves >= i * 2 ? 'fas fa-star' : halves === i * 2 - 1 ? 'fas fa-star-half-alt' : 'far fa-star';
+            icons += `<i class="${icon}"></i>`;
+        }
+        const label = escapeHtml(t('Rated {rating} out of 5', { rating: rating || 0 }));
+        return `<span class="stars" role="img" aria-label="${label}">${icons}</span>`;
+    }
+
+    function ratingHtml(product) {
+        if (product.review_count == null) return '';
+        const count = product.review_count;
+        const title = escapeHtml(tn('{n} review', '{n} reviews', count));
+        return `
+            <div class="card-rating${count ? '' : ' is-empty'}">
+                ${starsHtml(product.rating)}
+                <span class="card-rating-count" title="${title}">${count ? product.rating + ' ' : ''}(${count})</span>
+            </div>`;
+    }
+
     function miniCard(product, index) {
         return `
             <div class="mini-card" style="animation-delay: ${index * 40}ms">
@@ -148,6 +171,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </button>
                 <div class="mini-card-body">
                     <a href="${escapeHtml(product.url)}" class="mini-card-name">${escapeHtml(product.name)}</a>
+                    ${ratingHtml(product)}
                     <div class="mini-card-price">${formatPrice(product.price)}</div>
                 </div>
             </div>`;
