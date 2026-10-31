@@ -1,78 +1,98 @@
 {% extends "base.html" %}
 
-{% block title %}My Orders - eShop{% endblock %}
+{% block title %}{{ _('My Orders') }} - eShop{% endblock %}
 
 {% block content %}
-
-
-<div class="user-orders-container">
-    <div class="user-orders-header">
-        <h1><i class="fas fa-receipt"></i> My Orders</h1>
-        <p>View your order history and track your purchases</p>
+{% set statuses = ['pending', 'paid', 'shipped', 'cancelled'] %}
+{% set status_labels = {'pending': _('Pending'), 'paid': _('Paid'), 'shipped': _('Shipped'), 'cancelled': _('Cancelled')} %}
+{% set steps = [('pending', _('Placed')), ('paid', _('Paid')), ('shipped', _('Shipped'))] %}
+<div class="orders-page">
+    <div class="page-title-row">
+        <div>
+            <h1>{{ _('My orders') }}</h1>
+            <p class="page-subtitle">{{ _('View your order history and track your purchases.') }}</p>
+        </div>
     </div>
 
     {% if orders %}
-        <div class="orders-container">
-            <table class="orders-table">
-                <thead>
-                    <tr>
-                        <th>Order ID</th>
-                        <th>Date</th>
-                        <th>Products</th>
-                        <th>Total</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for order in orders %}
-                        <tr class="data-row">
-                            <td class="order-id">#{{ order.order_id }}</td>
-                            <td>
-                                <div class="order-date">{{ order.created_at[:16] }}</div>
-                            </td>
-                            <td class="order-products">
-                                <div class="order-product-list">
-                                    {% if order.product_names %}
-                                        {% for product_info in order.product_names.split(',') %}
-                                            <div class="order-product-item">
-                                                <span class="order-product-name">{{ product_info.split('(x')[0].strip() }}</span>
-                                                <span class="order-product-quantity">{{ product_info.split('(x')[1].replace(')', '').strip() if '(x' in product_info else 'x1' }}</span>
-                                            </div>
-                                        {% endfor %}
-                                    {% else %}
-                                        <span>No products</span>
-                                    {% endif %}
-                                </div>
-                            </td>
-                            <td class="order-total">${{ "%.2f"|format(order.total) }}</td>
-                            <td>
-                                <span class="order-status status-{{ order.status }}">{{ order.status|title }}</span>
-                            </td>
-                            <td>
-                                <div class="order-actions">
-                                    <button class="btn btn-sm btn-outline btn-order-action" onclick="viewOrderDetails({{ order.order_id }})">
-                                        <i class="fas fa-eye"></i> View
-                                    </button>
-                                    {% if order.status == 'shipped' %}
-                                    <button class="btn btn-sm btn-primary btn-order-action">
-                                        <i class="fas fa-truck"></i> Track
-                                    </button>
-                                    {% endif %}
-                                </div>
-                            </td>
-                        </tr>
+        <!-- Status filter (orders.js) -->
+        <div class="category-chips status-filter" role="group" aria-label="{{ _('Filter by status') }}">
+            <button type="button" class="chip active" data-status-filter="all">
+                {{ _('All') }} <span class="chip-count">{{ orders|length }}</span>
+            </button>
+            {% for status in statuses %}
+            {% set count = orders|selectattr('status', 'equalto', status)|list|length %}
+            {% if count %}
+            <button type="button" class="chip" data-status-filter="{{ status }}">
+                {{ status_labels[status] }} <span class="chip-count">{{ count }}</span>
+            </button>
+            {% endif %}
+            {% endfor %}
+        </div>
+
+        <div class="order-list" id="orderList">
+            {% for order in orders %}
+            <article class="order-card" data-status="{{ order.status }}">
+                <header class="order-card-head">
+                    <div class="order-heading">
+                        <span class="order-number">{{ _('Order #{id}', id=order.order_id) }}</span>
+                        <span class="order-date"><i class="far fa-calendar"></i> {{ order.created_at[:16] }}</span>
+                    </div>
+                    <span class="status-pill status-{{ order.status }}">{{ status_labels[order.status] }}</span>
+                </header>
+
+                <div class="order-card-body">
+                    <ul class="order-items-preview">
+                        {% if order.product_names %}
+                            {% for product_info in order.product_names.split(',') %}
+                            <li>
+                                <span class="order-item-name">{{ product_info.split('(x')[0].strip() }}</span>
+                                <span class="order-item-qty">×{{ product_info.split('(x')[1].replace(')', '').strip() if '(x' in product_info else '1' }}</span>
+                            </li>
+                            {% endfor %}
+                        {% else %}
+                            <li>{{ _('No products') }}</li>
+                        {% endif %}
+                    </ul>
+
+                    <div class="order-card-side">
+                        <span class="order-total-label">{{ _('Total') }}</span>
+                        <strong class="order-total-value">{{ order.total|currency }}</strong>
+                        <button type="button" class="btn btn-outline btn-sm" data-order-details="{{ order.order_id }}">
+                            <i class="fas fa-eye"></i> {{ _('View details') }}
+                        </button>
+                    </div>
+                </div>
+
+                {% if order.status == 'cancelled' %}
+                <div class="order-progress is-cancelled">
+                    <i class="fas fa-ban"></i> {{ _('This order was cancelled') }}
+                </div>
+                {% else %}
+                {% set reached = statuses.index(order.status) %}
+                <ol class="order-progress">
+                    {% for step, label in steps %}
+                    <li class="{{ 'done' if loop.index0 <= reached }}">
+                        <span class="progress-dot"></span>
+                        {{ label }}
+                    </li>
                     {% endfor %}
-                </tbody>
-            </table>
+                </ol>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+
+        <div class="empty-state" id="ordersFilterEmpty" hidden>
+            <p>{{ _('No orders with this status.') }}</p>
         </div>
     {% else %}
-        <div class="empty-orders">
-            <i class="fas fa-receipt"></i>
-            <h3>No Orders Yet</h3>
-            <p>You haven't placed any orders yet. Start shopping to see your orders here!</p>
+        <div class="empty-state">
+            <div class="empty-icon"><i class="fas fa-receipt"></i></div>
+            <h3>{{ _('No orders yet') }}</h3>
+            <p>{{ _('You haven\'t placed any orders yet. Start shopping to see your orders here!') }}</p>
             <a href="{{ url_for('main.home') }}" class="btn btn-primary">
-                <i class="fas fa-shopping-bag"></i> Start Shopping
+                <i class="fas fa-shopping-bag"></i> {{ _('Start shopping') }}
             </a>
         </div>
     {% endif %}

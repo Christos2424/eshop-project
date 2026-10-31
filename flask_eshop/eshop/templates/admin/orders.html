@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}Order Management - Admin{% endblock %}
+{% block title %}{{ _('Order Management') }} - Admin{% endblock %}
 
 {% block content %}
-
+{% set status_labels = {'pending': _('Pending'), 'paid': _('Paid'), 'shipped': _('Shipped'), 'cancelled': _('Cancelled')} %}
 
 <div class="admin-orders-container">
     <div class="admin-orders-header">
         <div class="header-content">
-            <h1><i class="fas fa-receipt"></i> Order Management</h1>
-            <p>Manage and track all customer orders</p>
+            <h1><i class="fas fa-receipt"></i> {{ _('Order Management') }}</h1>
+            <p>{{ _('Manage and track all customer orders') }}</p>
         </div>
         <div class="header-actions">
             <a href="{{ url_for('admin.products') }}" class="btn btn-outline">
-                <i class="fas fa-boxes"></i> Manage Products
+                <i class="fas fa-boxes"></i> {{ _('Manage Products') }}
             </a>
         </div>
     </div>
@@ -22,19 +22,19 @@
     <div class="orders-stats">
         <div class="order-stat">
             <div class="stat-number">{{ orders|length }}</div>
-            <div class="stat-label">Total Orders</div>
+            <div class="stat-label">{{ _('Total Orders') }}</div>
         </div>
         <div class="order-stat">
             <div class="stat-number">{{ orders|selectattr('status', 'equalto', 'pending')|list|length }}</div>
-            <div class="stat-label">Pending</div>
+            <div class="stat-label">{{ _('Pending') }}</div>
         </div>
         <div class="order-stat">
             <div class="stat-number">{{ orders|selectattr('status', 'equalto', 'paid')|list|length }}</div>
-            <div class="stat-label">Paid</div>
+            <div class="stat-label">{{ _('Paid') }}</div>
         </div>
         <div class="order-stat">
             <div class="stat-number">{{ orders|selectattr('status', 'equalto', 'shipped')|list|length }}</div>
-            <div class="stat-label">Shipped</div>
+            <div class="stat-label">{{ _('Shipped') }}</div>
         </div>
     </div>
 
@@ -44,43 +44,42 @@
             <div class="filter-section">
                 <div class="filter-row">
                     <div class="filter-group">
-                        <label for="orderStatusFilter"><i class="fas fa-filter"></i> Order Status</label>
+                        <label for="orderStatusFilter"><i class="fas fa-filter"></i> {{ _('Order Status') }}</label>
                         <select id="orderStatusFilter" class="filter-select">
-                            <option value="all">All Statuses</option>
-                            <option value="pending">Pending</option>
-                            <option value="paid">Paid</option>
-                            <option value="shipped">Shipped</option>
-                            <option value="cancelled">Cancelled</option>
+                            <option value="all">{{ _('All Statuses') }}</option>
+                            {% for status, label in status_labels.items() %}
+                            <option value="{{ status }}">{{ label }}</option>
+                            {% endfor %}
                         </select>
                     </div>
-                    
+
                     <div class="filter-group">
-                        <label for="orderSortBy"><i class="fas fa-sort"></i> Sort Orders By</label>
+                        <label for="orderSortBy"><i class="fas fa-sort"></i> {{ _('Sort Orders By') }}</label>
                         <select id="orderSortBy" class="filter-select">
-                            <option value="id_asc">Order ID: Low to High</option>
-                            <option value="id_desc">Order ID: High to Low</option>
+                            <option value="id_asc">{{ _('Order ID: Low to High') }}</option>
+                            <option value="id_desc">{{ _('Order ID: High to Low') }}</option>
                         </select>
                     </div>
                 </div>
             </div>
         </div>
-        
+
         <div class="orders-container">
             <table class="orders-table">
                 <thead>
                     <tr>
-                        <th>Order ID</th>
-                        <th>Date</th>
-                        <th>Customer</th>
-                        <th>Products</th>
-                        <th>Total</th>
-                        <th>Status</th>
-                        <th>Actions</th>
+                        <th>{{ _('Order ID') }}</th>
+                        <th>{{ _('Date') }}</th>
+                        <th>{{ _('Customer') }}</th>
+                        <th>{{ _('Products') }}</th>
+                        <th>{{ _('Total') }}</th>
+                        <th>{{ _('Status') }}</th>
+                        <th>{{ _('Actions') }}</th>
                     </tr>
                 </thead>
                 <tbody id="ordersTableBody">
                     {% for order in orders %}
-                        <tr class="data-row" 
+                        <tr class="data-row"
                             data-status="{{ order.status }}"
                             data-id="{{ order.order_id }}">
                             <td class="order-id">#{{ order.order_id }}</td>
@@ -103,30 +102,30 @@
                                             </div>
                                         {% endfor %}
                                     {% else %}
-                                        <span>No products</span>
+                                        <span>{{ _('No products') }}</span>
                                     {% endif %}
                                 </div>
                             </td>
-                            <td class="order-total">${{ "%.2f"|format(order.total) }}</td>
+                            <td class="order-total">{{ order.total|currency }}</td>
                             <td>
-                                <span class="order-status status-{{ order.status }}">{{ order.status|title }}</span>
+                                <span class="order-status status-{{ order.status }}">{{ status_labels[order.status] }}</span>
                             </td>
                             <td>
                                 <div class="admin-actions">
-                                    <button class="btn-action btn-edit" onclick="viewOrderDetails({{ order.order_id }})" title="View Order">
+                                    <button class="btn-action btn-edit" onclick="viewOrderDetails({{ order.order_id }})" title="{{ _('View Order') }}">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                     {% if order.status == 'pending' %}
-                                    <button class="btn-action btn-edit" onclick="updateOrderStatus({{ order.order_id }}, 'paid')" title="Mark as Paid">
+                                    <button class="btn-action btn-edit" onclick="updateOrderStatus({{ order.order_id }}, 'paid')" title="{{ _('Mark as Paid') }}">
                                         <i class="fas fa-check"></i>
                                     </button>
                                     {% elif order.status == 'paid' %}
-                                    <button class="btn-action btn-edit" onclick="updateOrderStatus({{ order.order_id }}, 'shipped')" title="Mark as Shipped">
+                                    <button class="btn-action btn-edit" onclick="updateOrderStatus({{ order.order_id }}, 'shipped')" title="{{ _('Mark as Shipped') }}">
                                         <i class="fas fa-shipping-fast"></i>
                                     </button>
                                     {% endif %}
                                     {% if order.status != 'cancelled' %}
-                                    <button class="btn-action btn-delete" onclick="updateOrderStatus({{ order.order_id }}, 'cancelled')" title="Cancel Order">
+                                    <button class="btn-action btn-delete" onclick="updateOrderStatus({{ order.order_id }}, 'cancelled')" title="{{ _('Cancel Order') }}">
                                         <i class="fas fa-times"></i>
                                     </button>
                                     {% endif %}
@@ -140,8 +139,8 @@
     {% else %}
         <div class="empty-orders">
             <i class="fas fa-receipt"></i>
-            <h3>No Orders Yet</h3>
-            <p>Orders will appear here when customers make purchases</p>
+            <h3>{{ _('No Orders Yet') }}</h3>
+            <p>{{ _('Orders will appear here when customers make purchases') }}</p>
         </div>
     {% endif %}
 </div>

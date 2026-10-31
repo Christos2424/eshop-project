@@ -1,204 +1,195 @@
 {% extends "base.html" %}
+{% from 'shop/_product_card.html' import product_card, product_image with context %}
 
-{% block title %}{{ product.name }} - eShop{% endblock %}
+{% set name = product|localized('name') %}
+{% set description = product|localized('description') %}
+
+{% block title %}{{ name }} - eShop{% endblock %}
 
 {% block content %}
-
-
-<div class="product-page">
-    <div class="product-breadcrumb">
-        <a href="{{ url_for('main.home') }}" class="breadcrumb-link">
-            <i class="fas fa-home"></i> Home
-        </a>
-        <span class="breadcrumb-separator">/</span>
-        <span class="breadcrumb-current">{{ product.name }}</span>
-    </div>
+{% set stock = product.stock_quantity %}
+<div class="product-page" data-product-id="{{ product.product_id }}">
+    <nav class="breadcrumb" aria-label="{{ _('Breadcrumb') }}">
+        <a href="{{ url_for('main.home') }}"><i class="fas fa-home"></i> {{ _('Home') }}</a>
+        <i class="fas fa-chevron-right breadcrumb-sep"></i>
+        {% if product.category %}
+        <a href="{{ url_for('main.home', category=product.category) }}">{{ category_label(product.category) }}</a>
+        <i class="fas fa-chevron-right breadcrumb-sep"></i>
+        {% endif %}
+        <span aria-current="page">{{ name }}</span>
+    </nav>
 
     <div class="product-layout">
-        <!-- Product Images -->
+        <!-- Product Image (hover to zoom, see product.js) -->
         <div class="product-gallery">
-            <div class="main-image-container">
-                <img src="{{ get_image_url(product.image_url) }}" 
-                     alt="{{ product.name }}" 
-                     class="main-product-image"
-                     id="mainProductImage">
+            <div class="gallery-frame {{ 'has-image' if product.image_url }}" id="galleryFrame">
+                {{ product_image(product, 'main-product-image') }}
+                {% if stock == 0 %}
+                <span class="badge badge-dark gallery-badge">{{ _('Sold out') }}</span>
+                {% elif stock < 10 %}
+                <span class="badge badge-warning gallery-badge">{{ _('Only {n} left', n=stock) }}</span>
+                {% endif %}
+                {% if product.image_url %}
+                <span class="gallery-hint"><i class="fas fa-search-plus"></i> {{ _('Hover to zoom') }}</span>
+                {% endif %}
             </div>
         </div>
 
         <!-- Product Info -->
         <div class="product-details">
-            <div class="product-header">
-                <h1 class="product-title">{{ product.name }}</h1>
-                <div class="product-rating">
-                    <div class="stars">
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star"></i>
-                        <i class="fas fa-star-half-alt"></i>
-                    </div>
-                    <span class="rating-text">(4.5 • 128 reviews)</span>
-                </div>
-            </div>
+            <a href="{{ url_for('main.home', category=product.category) if product.category else url_for('main.home') }}" class="product-category-chip">
+                {{ category_label(product.category) }}
+            </a>
+            <h1 class="product-title">{{ name }}</h1>
 
-            <div class="product-pricing">
-                <div class="current-price">${{ "%.2f"|format(product.price) }}</div>
-            </div>
-
-            <div class="product-meta">
-                <div class="meta-item">
-                    <i class="fas fa-tag"></i>
-                    <span class="meta-label">Category:</span>
-                    <span class="meta-value">{{ product.category or 'General' }}</span>
-                </div>
-                
-                {% if product.stock_quantity > 0 %}
-                    <div class="stock-available">
-                        <i class="fas fa-check-circle"></i>
-                        <span class="stock-text">In Stock</span>
-                        <span class="stock-quantity">({{ product.stock_quantity }} available)</span>
-                    </div>
+            <div class="product-price-row">
+                <span class="product-price">{{ product.price|currency }}</span>
+                {% if stock == 0 %}
+                <span class="stock-pill stock-out"><span class="stock-dot"></span> {{ _('Out of stock') }}</span>
+                {% elif stock < 10 %}
+                <span class="stock-pill stock-low"><span class="stock-dot"></span> {{ _('Low stock · {n} left', n=stock) }}</span>
                 {% else %}
-                    <div class="stock-unavailable">
-                        <i class="fas fa-times-circle"></i>
-                        <span class="stock-text">Out of Stock</span>
-                    </div>
+                <span class="stock-pill stock-in"><span class="stock-dot"></span> {{ _('In stock · {n} available', n=stock) }}</span>
                 {% endif %}
-                
             </div>
 
-            
+            {% if description %}
+            <p class="product-lead">{{ description|truncate(220) }}</p>
+            {% endif %}
 
-            <div class="product-description">
-                <h3>Description</h3>
-                <p>{{ product.description or 'No description available for this product.' }}</p>
-            </div>
+            {% if stock > 0 %}
+            <form action="{{ url_for('cart.add_to_cart') }}" method="post" class="purchase-box add-to-cart-form"
+                  data-open-drawer data-price="{{ product.price }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="product_id" value="{{ product.product_id }}">
 
-            {% if product.stock_quantity > 0 %}
-            <div class="purchase-section">
-                <form action="{{ url_for('cart.add_to_cart') }}" method="post" class="add-to-cart-form">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="product_id" value="{{ product.product_id }}">
-                    
-                    <div class="quantity-selector">
-                        <label for="quantity">Quantity:</label>
-                        <div class="quantity-controls">
-                            <button type="button" class="quantity-btn" onclick="decreaseQuantity()">
-                                <i class="fas fa-minus"></i>
-                            </button>
-                            <input type="number" id="quantity" name="quantity" 
-                                   value="1" min="1" max="{{ product.stock_quantity }}" 
-                                   class="quantity-input">
-                            <button type="button" class="quantity-btn" onclick="increaseQuantity()">
-                                <i class="fas fa-plus"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="action-buttons">
-                        <button type="submit" class="btn btn-primary btn-add-to-cart">
-                            <i class="fas fa-shopping-cart"></i>
-                            Add to Cart
+                <label for="quantity" class="purchase-label">{{ _('Quantity') }}</label>
+                <div class="purchase-row">
+                    <div class="qty-stepper" data-stepper>
+                        <button type="button" class="qty-step" data-step="-1" aria-label="{{ _('Decrease quantity') }}">
+                            <i class="fas fa-minus"></i>
                         </button>
-                        <button type="button" class="btn btn-secondary btn-wishlist">
-                            <i class="fas fa-heart"></i>
-                            Wishlist
+                        <input type="number" id="quantity" name="quantity" value="1" min="1" max="{{ stock }}"
+                               inputmode="numeric" class="qty-input">
+                        <button type="button" class="qty-step" data-step="1" aria-label="{{ _('Increase quantity') }}">
+                            <i class="fas fa-plus"></i>
                         </button>
                     </div>
-                </form>
-            </div>
-            {% else %}
-            <div class="out-of-stock-section">
-                <div class="out-of-stock-message">
-                    <i class="fas fa-bell"></i>
-                    <span>This product is currently out of stock</span>
+
+                    <button type="submit" class="btn btn-primary btn-lg btn-add-to-cart">
+                        <i class="fas fa-shopping-bag"></i>
+                        <span>{{ _('Add to cart') }}</span>
+                        <span class="btn-total" data-line-total>{{ product.price|currency }}</span>
+                    </button>
+
+                    <button type="button" class="icon-btn wishlist-btn-lg" data-wishlist-toggle
+                            data-product-id="{{ product.product_id }}" aria-label="{{ _('Save for later') }}" aria-pressed="false">
+                        <i class="far fa-heart"></i>
+                    </button>
                 </div>
-                <button class="btn btn-outline notify-btn">
-                    <i class="fas fa-envelope"></i>
-                    Notify When Available
+                <p class="stepper-hint" data-stepper-hint aria-live="polite"></p>
+            </form>
+            {% else %}
+            <div class="sold-out-box">
+                <div>
+                    <strong><i class="fas fa-box-open"></i> {{ _('Currently out of stock') }}</strong>
+                    <p>{{ _('Save it for later and check back soon.') }}</p>
+                </div>
+                <button type="button" class="btn btn-outline" data-wishlist-toggle data-product-id="{{ product.product_id }}" aria-pressed="false">
+                    <i class="far fa-heart"></i> <span>{{ _('Save for later') }}</span>
                 </button>
             </div>
             {% endif %}
 
-            <div class="product-features">
-                <div class="feature">
-                    <i class="fas fa-shipping-fast"></i>
-                    <span>Free shipping on orders over $50</span>
-                </div>
-                <div class="feature">
-                    <i class="fas fa-undo"></i>
-                    <span>30-day return policy</span>
-                </div>
-                <div class="feature">
-                    <i class="fas fa-shield-alt"></i>
-                    <span>2-year warranty included</span>
-                </div>
-            </div>
+            <ul class="product-perks">
+                <li>
+                    <span class="perk-icon"><i class="fas fa-shipping-fast"></i></span>
+                    <div><strong>{{ _('Free shipping') }}</strong><span>{{ _('On orders over ${amount}', amount=config.FREE_SHIPPING_THRESHOLD) }}</span></div>
+                </li>
+                <li>
+                    <span class="perk-icon"><i class="fas fa-undo"></i></span>
+                    <div><strong>{{ _('30-day returns') }}</strong><span>{{ _('Easy return policy') }}</span></div>
+                </li>
+                <li>
+                    <span class="perk-icon"><i class="fas fa-shield-alt"></i></span>
+                    <div><strong>{{ _('2-year warranty') }}</strong><span>{{ _('Included') }}</span></div>
+                </li>
+            </ul>
         </div>
     </div>
 
     <!-- Product Tabs -->
     <div class="product-tabs">
-        <div class="tabs-header">
-            <button class="tab-btn active" data-tab="description">Description</button>
-            <button class="tab-btn" data-tab="specifications">Specifications</button>
-            <button class="tab-btn" data-tab="reviews">Reviews</button>
-            <button class="tab-btn" data-tab="shipping">Shipping & Returns</button>
+        <div class="tabs-header" role="tablist" aria-label="{{ _('Product information') }}">
+            <button type="button" class="tab-btn active" role="tab" id="tab-description" aria-controls="description" aria-selected="true">{{ _('Description') }}</button>
+            <button type="button" class="tab-btn" role="tab" id="tab-specifications" aria-controls="specifications" aria-selected="false" tabindex="-1">{{ _('Specifications') }}</button>
+            <button type="button" class="tab-btn" role="tab" id="tab-shipping" aria-controls="shipping" aria-selected="false" tabindex="-1">{{ _('Shipping & Returns') }}</button>
+            <button type="button" class="tab-btn" role="tab" id="tab-reviews" aria-controls="reviews" aria-selected="false" tabindex="-1">{{ _('Reviews') }}</button>
         </div>
-        
+
         <div class="tabs-content">
-            <div class="tab-pane active" id="description">
-                <h3>Product Details</h3>
-                <p>{{ product.description or 'Detailed product description coming soon.' }}</p>
+            <div class="tab-pane active" id="description" role="tabpanel" aria-labelledby="tab-description">
+                <h3>{{ _('Product details') }}</h3>
+                <p>{{ description or _('Detailed product description coming soon.') }}</p>
             </div>
-            
-            <div class="tab-pane" id="specifications">
-                <h3>Technical Specifications</h3>
-                <div class="specs-grid">
-                    <div class="spec-item">
-                        <span class="spec-label">Category</span>
-                        <span class="spec-value">{{ product.category or 'General' }}</span>
-                    </div>
-                    <div class="spec-item">
-                        <span class="spec-label">SKU</span>
-                        <span class="spec-value">#{{ product.product_id }}</span>
-                    </div>
-                    <div class="spec-item">
-                        <span class="spec-label">In Stock</span>
-                        <span class="spec-value">{{ product.stock_quantity }} units</span>
-                    </div>
-                </div>
+
+            <div class="tab-pane" id="specifications" role="tabpanel" aria-labelledby="tab-specifications" hidden>
+                <h3>{{ _('Specifications') }}</h3>
+                <dl class="specs-grid">
+                    <div class="spec-item"><dt>{{ _('Category') }}</dt><dd>{{ category_label(product.category) }}</dd></div>
+                    <div class="spec-item"><dt>{{ _('SKU') }}</dt><dd>#{{ product.product_id }}</dd></div>
+                    <div class="spec-item"><dt>{{ _('Availability') }}</dt><dd>{{ ngettext('{n} unit in stock', '{n} units in stock', stock) }}</dd></div>
+                    <div class="spec-item"><dt>{{ _('Price') }}</dt><dd>{{ product.price|currency }}</dd></div>
+                </dl>
             </div>
-            
-            <div class="tab-pane" id="reviews">
-                <h3>Customer Reviews</h3>
-                <div class="reviews-placeholder">
-                    <i class="fas fa-comments"></i>
-                    <p>No reviews yet. Be the first to review this product!</p>
-                    <button class="btn btn-primary">Write a Review</button>
-                </div>
-            </div>
-            
-            <div class="tab-pane" id="shipping">
-                <h3>Shipping & Return Policy</h3>
+
+            <div class="tab-pane" id="shipping" role="tabpanel" aria-labelledby="tab-shipping" hidden>
                 <div class="shipping-info">
-                    <h4>Shipping</h4>
-                    <ul>
-                        <li>Free standard shipping on orders over $50</li>
-                        <li>Express shipping available for $9.99</li>
-                        <li>Usually ships within 1-2 business days</li>
-                    </ul>
-                    
-                    <h4>Returns</h4>
-                    <ul>
-                        <li>30-day money-back guarantee</li>
-                        <li>Free returns for unused items</li>
-                        <li>Return shipping paid by customer</li>
-                    </ul>
+                    <div>
+                        <h4><i class="fas fa-shipping-fast"></i> {{ _('Shipping') }}</h4>
+                        <ul>
+                            <li>{{ _('Free standard shipping on orders over ${amount}', amount=config.FREE_SHIPPING_THRESHOLD) }}</li>
+                            <li>{{ _('Express shipping available for $9.99') }}</li>
+                            <li>{{ _('Usually ships within 1-2 business days') }}</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4><i class="fas fa-undo"></i> {{ _('Returns') }}</h4>
+                        <ul>
+                            <li>{{ _('30-day money-back guarantee') }}</li>
+                            <li>{{ _('Free returns for unused items') }}</li>
+                            <li>{{ _('Return shipping paid by customer') }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane" id="reviews" role="tabpanel" aria-labelledby="tab-reviews" hidden>
+                <div class="reviews-placeholder">
+                    <i class="far fa-comments"></i>
+                    <p>{{ _('No reviews yet for this product.') }}</p>
                 </div>
             </div>
         </div>
     </div>
+
+    {% if related %}
+    <section class="related-section">
+        <div class="section-heading">
+            <h2>{{ _('You might also like') }}</h2>
+            {% if product.category %}
+            <a href="{{ url_for('main.home', category=product.category) }}" class="section-link">
+                {{ _('More in {category}', category=category_label(product.category)) }} <i class="fas fa-arrow-right"></i>
+            </a>
+            {% endif %}
+        </div>
+        <div class="products-grid products-grid-4">
+            {% for item in related %}
+                {{ product_card(item, loop.index0) }}
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
 </div>
 {% endblock %}
 

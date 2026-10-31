@@ -1,175 +1,162 @@
 {% extends "base.html" %}
+{% from 'shop/_product_card.html' import product_image with context %}
 
-{% block title %}Checkout - eShop{% endblock %}
+{% block title %}{{ _('Checkout') }} - eShop{% endblock %}
 
 {% block content %}
-
-
 <div class="checkout-page">
-    <div class="checkout-header">
-        <h1><i class="fas fa-credit-card"></i> Checkout</h1>
-    </div>
-    
+    <ol class="checkout-steps" aria-label="{{ _('Checkout progress') }}">
+        <li class="done"><span class="step-dot"><i class="fas fa-check"></i></span> {{ _('Cart') }}</li>
+        <li class="current" aria-current="step"><span class="step-dot">2</span> {{ _('Details') }}</li>
+        <li><span class="step-dot">3</span> {{ _('Confirmation') }}</li>
+    </ol>
+
     {% if cart_items %}
-        <div class="checkout-layout">
-            <!-- Checkout Form -->
-            <div class="checkout-form-section">
-                <h2 class="section-title"><i class="fas fa-shipping-fast"></i> Shipping Information</h2>
-                
-                <form action="{{ url_for('cart.checkout') }}" method="POST">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="form-section">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="firstName">First Name *</label>
-                                <input type="text" id="firstName" name="firstName" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="lastName">Last Name *</label>
-                                <input type="text" id="lastName" name="lastName" required>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="email">Email Address *</label>
-                            <input type="email" id="email" name="email" value="{{ session.get('email', '') }}" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="address">Street Address *</label>
-                            <input type="text" id="address" name="address" required>
-                        </div>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="city">City *</label>
-                                <input type="text" id="city" name="city" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="zipCode">ZIP Code *</label>
-                                <input type="text" id="zipCode" name="zipCode" required>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="country">Country *</label>
-                            <select id="country" name="country" required>
-                                <option value="">Select Country</option>
-                                <option value="US">United States</option>
-                                <option value="CA">Canada</option>
-                                <option value="UK">United Kingdom</option>
-                            </select>
-                        </div>
-                    </div>
+    <div class="checkout-layout">
+        <!-- Checkout Form (validated by checkout.js) -->
+        <form action="{{ url_for('cart.checkout') }}" method="POST" class="checkout-form" id="checkoutForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-                    <h2 class="section-title"><i class="fas fa-credit-card"></i> Payment Method</h2>
-                    
-                    <div class="form-section">
-                        <div class="payment-methods">
-                            <div class="payment-method">
-                                <input type="radio" id="creditCard" name="paymentMethod" value="credit" checked>
-                                <label for="creditCard">
-                                    <i class="fas fa-credit-card"></i>
-                                    <span>Credit Card</span>
-                                </label>
-                            </div>
-                            <div class="payment-method">
-                                <input type="radio" id="paypal" name="paymentMethod" value="paypal">
-                                <label for="paypal">
-                                    <i class="fab fa-paypal"></i>
-                                    <span>PayPal</span>
-                                </label>
-                            </div>
-                            <div class="payment-method">
-                                <input type="radio" id="applePay" name="paymentMethod" value="applepay">
-                                <label for="applePay">
-                                    <i class="fab fa-apple-pay"></i>
-                                    <span>Apple Pay</span>
-                                </label>
-                            </div>
-                        </div>
+            <section class="checkout-card">
+                <h2 class="checkout-card-title"><span class="title-num">1</span> {{ _('Shipping information') }}</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="firstName">{{ _('First name') }}</label>
+                        <input type="text" id="firstName" name="firstName" autocomplete="given-name" required>
                     </div>
+                    <div class="form-group">
+                        <label for="lastName">{{ _('Last name') }}</label>
+                        <input type="text" id="lastName" name="lastName" autocomplete="family-name" required>
+                    </div>
+                </div>
 
-                    <div class="checkout-actions">
-                        <button type="submit" class="btn btn-primary btn-checkout">
-                            <i class="fas fa-lock"></i> Place Order
-                        </button>
-                        <a href="{{ url_for('cart.view_cart') }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Back to Cart
-                        </a>
+                <div class="form-group">
+                    <label for="email">{{ _('Email address') }}</label>
+                    <input type="email" id="email" name="email" autocomplete="email" value="{{ session.get('email', '') }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="address">{{ _('Street address') }}</label>
+                    <input type="text" id="address" name="address" autocomplete="street-address" required>
+                </div>
+
+                <div class="form-row form-row-3">
+                    <div class="form-group">
+                        <label for="city">{{ _('City') }}</label>
+                        <input type="text" id="city" name="city" autocomplete="address-level2" required>
                     </div>
-                </form>
+                    <div class="form-group">
+                        <label for="zipCode">{{ _('ZIP code') }}</label>
+                        <input type="text" id="zipCode" name="zipCode" autocomplete="postal-code" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="country">{{ _('Country') }}</label>
+                        <select id="country" name="country" autocomplete="country" required>
+                            <option value="">{{ _('Select…') }}</option>
+                            <option value="GR">{{ _('Greece') }}</option>
+                            <option value="CY">{{ _('Cyprus') }}</option>
+                            <option value="US">{{ _('United States') }}</option>
+                            <option value="CA">{{ _('Canada') }}</option>
+                            <option value="UK">{{ _('United Kingdom') }}</option>
+                            <option value="DE">{{ _('Germany') }}</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <section class="checkout-card">
+                <h2 class="checkout-card-title"><span class="title-num">2</span> {{ _('Payment method') }}</h2>
+                <div class="payment-methods">
+                    <div class="payment-method">
+                        <input type="radio" id="creditCard" name="paymentMethod" value="credit" checked>
+                        <label for="creditCard">
+                            <i class="fas fa-credit-card"></i>
+                            <span>{{ _('Credit card') }}</span>
+                        </label>
+                    </div>
+                    <div class="payment-method">
+                        <input type="radio" id="paypal" name="paymentMethod" value="paypal">
+                        <label for="paypal">
+                            <i class="fab fa-paypal"></i>
+                            <span>PayPal</span>
+                        </label>
+                    </div>
+                    <div class="payment-method">
+                        <input type="radio" id="applePay" name="paymentMethod" value="applepay">
+                        <label for="applePay">
+                            <i class="fab fa-apple-pay"></i>
+                            <span>Apple Pay</span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <div class="checkout-actions">
+                <a href="{{ url_for('cart.view_cart') }}" class="btn btn-outline">
+                    <i class="fas fa-arrow-left"></i> {{ _('Back to cart') }}
+                </a>
+                <button type="submit" class="btn btn-primary btn-lg btn-checkout">
+                    <i class="fas fa-lock"></i> {{ _('Place order · {total}', total=totals.total|currency) }}
+                </button>
             </div>
+        </form>
 
-            <!-- Order Summary -->
-            <div class="checkout-summary-section">
-                <h2 class="section-title"><i class="fas fa-receipt"></i> Order Summary</h2>
-                
-                <div class="order-items">
-                    {% for item in cart_items %}
-                    <div class="order-item">
-                        <div class="order-item-info">
-                            <img src="{{ get_image_url(item.product.image_url) }}" 
-                                 alt="{{ item.product.name }}" 
-                                 class="order-item-image">
-                            <div class="order-item-details">
-                                <div class="order-item-name">{{ item.product.name }}</div>
-                                <div class="order-item-quantity">Qty: {{ item.quantity }}</div>
-                            </div>
-                        </div>
-                        <div class="order-item-price">${{ "%.2f"|format(item.total) }}</div>
-                    </div>
-                    {% endfor %}
-                </div>
-                
-                <div class="order-totals">
-                    <div class="total-row">
-                        <span>Subtotal:</span>
-                        <span>${{ "%.2f"|format(total) }}</span>
-                    </div>
-                    <div class="total-row">
-                        <span>Shipping:</span>
-                        <span>${{ "0.00" if total >= 50 else "9.99" }}</span>
-                    </div>
-                    <div class="total-row">
-                        <span>Tax:</span>
-                        <span>${{ "%.2f"|format(total * 0.08) }}</span>
-                    </div>
-                    <div class="total-row">
-                        <span>Total:</span>
-                        <span>${{ "%.2f"|format(total + (0 if total >= 50 else 9.99) + (total * 0.08)) }}</span>
-                    </div>
-                </div>
+        <!-- Order Summary -->
+        <aside class="summary-card checkout-summary">
+            <h2>{{ _('Order summary') }}</h2>
 
-                <div class="security-features">
-                    <h4><i class="fas fa-shield-alt"></i> Secure Checkout</h4>
-                    <div class="security-list">
-                        <div class="security-item">
-                            <i class="fas fa-lock"></i>
-                            <span>256-bit SSL encryption</span>
-                        </div>
-                        <div class="security-item">
-                            <i class="fas fa-shield-check"></i>
-                            <span>PCI DSS compliant</span>
-                        </div>
-                        <div class="security-item">
-                            <i class="fas fa-user-shield"></i>
-                            <span>Your data is protected</span>
-                        </div>
-                    </div>
+            <ul class="summary-items">
+                {% for item in cart_items %}
+                <li class="summary-item">
+                    <span class="summary-item-media">
+                        {{ product_image(item.product, 'summary-item-image') }}
+                        <span class="summary-item-qty">{{ item.quantity }}</span>
+                    </span>
+                    <span class="summary-item-name">{{ item.product|localized('name') }}</span>
+                    <span class="summary-item-price">{{ item.total|currency }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+
+            <dl class="summary-lines">
+                <div class="summary-line">
+                    <dt>{{ _('Subtotal') }}</dt>
+                    <dd>{{ totals.subtotal|currency }}</dd>
                 </div>
+                <div class="summary-line">
+                    <dt>{{ _('Shipping') }}</dt>
+                    <dd>{{ _('Free') if totals.shipping == 0 else totals.shipping|currency }}</dd>
+                </div>
+                <div class="summary-line">
+                    <dt>{{ _('Tax ({rate}%)', rate=(config.TAX_RATE * 100)|round|int) }}</dt>
+                    <dd>{{ totals.tax|currency }}</dd>
+                </div>
+                <div class="summary-line summary-total">
+                    <dt>{{ _('Total') }}</dt>
+                    <dd>{{ totals.total|currency }}</dd>
+                </div>
+            </dl>
+
+            <div class="security-features">
+                <div class="security-item"><i class="fas fa-lock"></i> {{ _('256-bit SSL encryption') }}</div>
+                <div class="security-item"><i class="fas fa-shield-alt"></i> {{ _('PCI DSS compliant') }}</div>
+                <div class="security-item"><i class="fas fa-user-shield"></i> {{ _('Your data is protected') }}</div>
             </div>
-        </div>
+        </aside>
+    </div>
     {% else %}
-        <div class="empty-checkout">
-            <i class="fas fa-shopping-cart"></i>
-            <h3>Your cart is empty</h3>
-            <p>Add some items to your cart before checking out</p>
-            <a href="{{ url_for('main.home') }}" class="btn btn-primary">
-                <i class="fas fa-shopping-bag"></i> Continue Shopping
-            </a>
-        </div>
+    <div class="empty-state">
+        <div class="empty-icon"><i class="fas fa-shopping-bag"></i></div>
+        <h3>{{ _('Your cart is empty') }}</h3>
+        <p>{{ _('Add some items to your cart before checking out') }}</p>
+        <a href="{{ url_for('main.home') }}" class="btn btn-primary">
+            <i class="fas fa-store"></i> {{ _('Continue shopping') }}
+        </a>
+    </div>
     {% endif %}
 </div>
+{% endblock %}
 
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/checkout.js') }}"></script>
 {% endblock %}

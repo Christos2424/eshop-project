@@ -1,10 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ current_language }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{% block title %}eShop - Modern Online Shopping{% endblock %}</title>
+    <title>{% block title %}{{ _('eShop - Modern Online Shopping') }}{% endblock %}</title>
+    <!-- Lets CSS hide no-JS fallbacks (like the filters' Apply button) before the page paints -->
+    <script>document.documentElement.classList.add('js');</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/header.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}">
@@ -13,11 +19,12 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/products.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/product-detail.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cart.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/orders.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
+    <div class="loading-bar" id="loadingBar" aria-hidden="true"></div>
+
     {% include 'partials/_header.html' %}
 
     <!-- Main Content -->
@@ -31,32 +38,49 @@
         </div>
     </main>
 
-    <!-- Modern Footer -->
     {% include 'partials/_footer.html' %}
 
-    <!-- Include categories data for JavaScript -->
-    <script id="categories-data" type="application/json">{{ global_categories | tojson }}</script>
-    
+    {% include 'partials/_cart_drawer.html' %}
+
+    <!-- Toast notifications are added here by base.js -->
+    <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
     <!-- URL configuration for JavaScript -->
     <script>
         window.APP_URLS = {
             home: "{{ url_for('main.home') }}",
             add_to_cart: "{{ url_for('cart.add_to_cart') }}",
+            update_cart: "{{ url_for('cart.update_cart') }}",
+            remove_from_cart: "{{ url_for('cart.remove_from_cart') }}",
+            cart_data: "{{ url_for('cart.cart_data') }}",
             view_cart: "{{ url_for('cart.view_cart') }}",
+            checkout: "{{ url_for('cart.checkout') }}",
             user_orders: "{{ url_for('orders.user_orders') }}",
+            order_items: "{{ url_for('orders.order_items', order_id=0) }}",
             admin_products: "{{ url_for('admin.products') }}",
             login: "{{ url_for('auth.login') }}",
             register: "{{ url_for('auth.register') }}",
             logout: "{{ url_for('auth.logout') }}",
+            search_api: "{{ url_for('api.search') }}",
+            products_api: "{{ url_for('api.products') }}",
+            placeholder_image: "{{ url_for('static', filename='images/placeholder.png') }}",
             product_detail: "{{ url_for('main.product_detail', product_id=0) }}".replace('/0', '')
         };
+        window.SHOP_CONFIG = {
+            freeShippingThreshold: {{ config.FREE_SHIPPING_THRESHOLD }},
+            language: "{{ current_language }}"
+        };
     </script>
-    
+
+    <!-- Translations for t() in JavaScript (English needs none) -->
+    {% if current_language != 'en' %}
+    <script src="{{ url_for('main.translations_js', code=current_language, v=translations_version) }}"></script>
+    {% endif %}
+
     <!-- Base JavaScript (loaded on all pages) -->
     <script src="{{ url_for('static', filename='js/base.js') }}"></script>
-    
+
     <!-- Page-specific JavaScript -->
     {% block scripts %}{% endblock %}
-    
 </body>
 </html>

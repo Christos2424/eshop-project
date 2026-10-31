@@ -6,8 +6,43 @@ import urllib.request
 from urllib.error import URLError
 from urllib.parse import urlparse
 
-from flask import current_app, flash
+from flask import current_app, flash, url_for
 from werkzeug.utils import secure_filename
+
+from .i18n import gettext
+
+
+# Icon and colour (hue) shown instead of a photo, by category
+CATEGORY_ART = {
+    'electronics': ('fa-laptop', 235),
+    'books': ('fa-book-open', 28),
+    'home & kitchen': ('fa-couch', 172),
+    'sports & outdoors': ('fa-dumbbell', 145),
+    'fashion': ('fa-tshirt', 330),
+    'beauty & care': ('fa-spa', 285),
+    'toys & games': ('fa-puzzle-piece', 45),
+    'food': ('fa-apple-alt', 95),
+}
+DEFAULT_ART = ('fa-box-open', 245)
+
+
+def placeholder_art(category):
+    """{'icon', 'hue'} for products without an image"""
+    icon, hue = CATEGORY_ART.get((category or '').strip().casefold(), DEFAULT_ART)
+    return {'icon': icon, 'hue': hue}
+
+
+def image_src(image_url):
+    """URL to show a product image; None when the product has no image"""
+    if not image_url:
+        return None
+
+    # If it starts with uploads/, it's a local file
+    if image_url.startswith('uploads/'):
+        return url_for('uploaded_file', filename=image_url.removeprefix('uploads/'))
+
+    # Otherwise, it's an external URL
+    return image_url
 
 
 def allowed_file(filename):
@@ -114,5 +149,5 @@ def save_uploaded_file(file, product_id):
             return f"uploads/{filename}"
         return None
     except Exception as e:
-        flash(f"Error processing image: {str(e)}", "danger")
+        flash(gettext('Error processing image: {error}', error=str(e)), 'danger')
         return None

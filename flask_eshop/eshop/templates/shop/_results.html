@@ -1,0 +1,72 @@
+{# Product results; rendered inside shop/index.html and returned alone for AJAX requests #}
+{% from 'shop/_product_card.html' import product_card with context %}
+
+<div class="results-header" id="resultsTop">
+    <div class="results-summary">
+        <h2 class="results-title">
+            {% if filters.q %}{{ _('Results for “{query}”', query=filters.q) }}{% elif filters.category %}{{ category_label(filters.category) }}{% else %}{{ _('All products') }}{% endif %}
+        </h2>
+        <span class="results-count">{{ ngettext('{n} product', '{n} products', total) }}</span>
+    </div>
+
+    {% if pills %}
+    <div class="filter-pills">
+        {% for pill in pills %}
+        <a href="{{ pill.url }}" class="filter-pill" data-shop-link aria-label="{{ _('Remove filter {name}', name=pill.label) }}">
+            {{ pill.label }} <i class="fas fa-times"></i>
+        </a>
+        {% endfor %}
+        <a href="{{ url_for('main.home') }}" class="clear-filters" data-shop-link>{{ _('Clear all') }}</a>
+    </div>
+    {% endif %}
+</div>
+
+{% if products %}
+    <div class="products-grid">
+        {% for product in products %}
+            {{ product_card(product, loop.index0) }}
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <nav class="pagination" aria-label="{{ _('Pagination') }}">
+        {% if page > 1 %}
+        <a href="{{ url_for('main.home', page=page-1, **filter_params) }}" class="page-link page-nav" data-shop-link>
+            <i class="fas fa-chevron-left"></i> <span>{{ _('Previous') }}</span>
+        </a>
+        {% endif %}
+
+        {% for p in range(1, total_pages + 1) %}
+            {% if p == 1 or p == total_pages or (p >= page - 1 and p <= page + 1) %}
+                <a href="{{ url_for('main.home', page=p, **filter_params) }}"
+                   class="page-link {{ 'active' if p == page }}" data-shop-link
+                   {% if p == page %}aria-current="page"{% endif %}>{{ p }}</a>
+            {% elif p == page - 2 or p == page + 2 %}
+                <span class="page-ellipsis">…</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+        <a href="{{ url_for('main.home', page=page+1, **filter_params) }}" class="page-link page-nav" data-shop-link>
+            <span>{{ _('Next') }}</span> <i class="fas fa-chevron-right"></i>
+        </a>
+        {% endif %}
+    </nav>
+    {% endif %}
+{% else %}
+    <div class="empty-state">
+        <div class="empty-icon"><i class="fas fa-search"></i></div>
+        <h3>{{ _('No products found') }}</h3>
+        <p>
+            {% if filters.q %}{{ _('Nothing matches “{query}”. Try a different search or fewer filters.', query=filters.q) }}
+            {% elif pills %}{{ _('No products match these filters.') }}
+            {% else %}{{ _('No products available at the moment.') }}{% endif %}
+        </p>
+        {% if pills %}
+        <a href="{{ url_for('main.home') }}" class="btn btn-primary" data-shop-link>
+            <i class="fas fa-undo"></i> {{ _('View all products') }}
+        </a>
+        {% endif %}
+    </div>
+{% endif %}

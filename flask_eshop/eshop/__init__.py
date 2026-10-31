@@ -1,12 +1,14 @@
 import os
 import secrets
 
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory, session
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from werkzeug.exceptions import HTTPException
 
-from . import db
+from . import db, i18n
 from .config import Config
+from .i18n import gettext as _
+from .images import image_src, placeholder_art
 
 csrf = CSRFProtect()
 
@@ -29,13 +31,15 @@ def create_app(test_config=None):
 
     csrf.init_app(app)
     db.init_app(app)
+    i18n.load_catalogs(app)
 
-    from .routes import main, auth, cart, orders, admin
+    from .routes import main, auth, cart, orders, admin, api
     app.register_blueprint(main.bp)
     app.register_blueprint(auth.bp)
     app.register_blueprint(cart.bp)
     app.register_blueprint(orders.bp)
     app.register_blueprint(admin.bp)
+    app.register_blueprint(api.bp)
 
     register_template_helpers(app)
     register_error_handlers(app)
@@ -72,27 +76,41 @@ def load_or_create_secret_key(instance_path):
 
 
 def register_template_helpers(app):
+    @app.template_filter('currency')
+    def currency(value):
+        return f"${value or 0:,.2f}"
+
+    # Translations: {{ _('Text') }}, {{ ngettext('{n} item', '{n} items', n) }}, {{ product|localized('name') }}
+    app.jinja_env.globals.update(
+        _=i18n.template_gettext,
+        ngettext=i18n.template_ngettext,
+        category_label=i18n.category_label,
+        placeholder_art=placeholder_art,
+        LANGUAGES=i18n.LANGUAGES,
+    )
+    app.jinja_env.filters['localized'] = i18n.localized
+    translations_version = i18n.catalog_version(app)
+
+    @app.context_processor
+    def language_processor():
+        return dict(current_language=i18n.get_locale(), translations_version=translations_version)
+
     @app.context_processor
     def utility_processor():
         def get_image_url(image_url):
-            if not image_url:
-                return url_for('static', filename='images/placeholder.png')
+            return image_src(image_url) or url_for('static', filename='images/placeholder.png')
 
-            # If it starts with uploads/, it's a local file
-            if image_url.startswith('uploads/'):
-                return url_for('uploaded_file', filename=image_url.removeprefix('uploads/'))
-
-            # Otherwise, it's an external URL
-            return image_url
-
-        # Get categories for header dropdown
+        # Get categories (with product counts) for the header sidebar and filter chips
         categories = []
         try:
-            categories = db.get_categories()
+            categories = db.get_category_counts()
         except Exception:
             pass
 
-        return dict(get_image_url=get_image_url, global_categories=categories)
+        cart_count = sum(session.get('cart', {}).values())
+
+        return dict(get_image_url=get_image_url, image_src=image_src,
+                    global_categories=categories, cart_count=cart_count)
 
 
 def register_error_handlers(app):
@@ -106,12 +124,12 @@ def register_error_handlers(app):
 
     @app.errorhandler(413)
     def too_large(error):
-        flash('File too large. Maximum size is 16MB.', 'danger')
+        flash(_('File too large. Maximum size is 16MB.'), 'danger')
         return redirect(request.referrer or url_for('main.home'))
 
     @app.errorhandler(CSRFError)
     def csrf_error(error):
-        message = 'Your session expired. Please try again.'
+        message = _('Your session expired. Please try again.')
         if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': False, 'message': message, 'error': message}), 400
         flash(message, 'warning')
@@ -122,5 +140,5 @@ def register_error_handlers(app):
         # Let HTTP errors (405, 403, ...) keep their own status code
         if isinstance(error, HTTPException):
             return error
-        flash('An unexpected error occurred. Please try again.', 'danger')
+        flash(_('An unexpected error occurred. Please try again.'), 'danger')
         return render_template('errors/500.html'), 500

@@ -1,16 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}Page Not Found - eShop{% endblock %}
+{% block title %}{{ _('Page not found') }} - eShop{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1><i class="fas fa-exclamation-triangle"></i> 404 - Page Not Found</h1>
-    <p>The page you're looking for doesn't exist.</p>
-</div>
-
-<div class="empty-state">
-    <i class="fas fa-search"></i>
-    <h3>Page Not Found</h3>
-    <p>We couldn't find the page you were looking for.</p>
+<div class="error-page">
+    <span class="error-code">404</span>
+    <h1>{{ _('Page not found') }}</h1>
+    <p>{{ _('The page you\'re looking for doesn\'t exist or has been moved.') }}</p>
+    <div class="error-actions">
+        <a href="{{ url_for('main.home') }}" class="btn btn-primary">
+            <i class="fas fa-home"></i> {{ _('Go home') }}
+        </a>
+        <button type="button" class="btn btn-outline" data-open-categories>
+            <i class="fas fa-th-large"></i> {{ _('Browse categories') }}
+        </button>
+    </div>
 </div>
 {% endblock %}

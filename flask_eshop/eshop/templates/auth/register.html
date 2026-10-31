@@ -1,30 +1,68 @@
-{% extends "base.html" %}  
+{% extends "base.html" %}
 
-{% block title %}Register - eShop{% endblock %}
+{% block title %}{{ _('Register') }} - eShop{% endblock %}
 
 {% block content %}
-    <div class="auth-form">
-        <h2>Create Account</h2>
-        <form method="POST" action="{{ url_for('auth.register') }}">
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-header">
+            <span class="auth-icon"><i class="fas fa-user-plus"></i></span>
+            <h1>{{ _('Create your account') }}</h1>
+            <p>{{ _('Check out faster and keep track of every order.') }}</p>
+        </div>
+
+        <!-- Rules match validators.validate_user_data; auth.js checks them as you type -->
+        <form method="POST" action="{{ url_for('auth.register') }}" class="auth-form" data-auth-form data-validate>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required>
+                <label for="username">{{ _('Username') }}</label>
+                <div class="input-icon">
+                    <i class="fas fa-at"></i>
+                    <input type="text" id="username" name="username" autocomplete="username" placeholder="{{ _('e.g. alex2025') }}"
+                           value="{{ request.form.get('username', '') }}" required minlength="3" autofocus>
+                </div>
+                <small class="field-hint">{{ _('At least 3 characters, letters and numbers only.') }}</small>
             </div>
             <div class="form-group">
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" required>
+                <label for="email">{{ _('Email') }}</label>
+                <div class="input-icon">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="email" name="email" autocomplete="email" placeholder="you@example.com"
+                           value="{{ request.form.get('email', '') }}" required>
+                </div>
             </div>
             <div class="form-group">
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required>
+                <label for="password">{{ _('Password') }}</label>
+                <div class="input-icon">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" name="password" autocomplete="new-password" placeholder="{{ _('At least 6 characters') }}" required minlength="6">
+                    <button type="button" class="password-toggle" data-password-toggle="password" aria-label="{{ _('Show password') }}" aria-pressed="false">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+                <div class="strength-meter" data-strength-meter hidden>
+                    <div class="strength-bars"><span></span><span></span><span></span><span></span></div>
+                    <span class="strength-label" data-strength-label></span>
+                </div>
             </div>
             <div class="form-group">
-                <label for="confirm_password">Confirm Password:</label>
-                <input type="password" id="confirm_password" name="confirm_password" required>
+                <label for="confirm_password">{{ _('Confirm password') }}</label>
+                <div class="input-icon">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" placeholder="{{ _('Repeat your password') }}" required>
+                    <button type="button" class="password-toggle" data-password-toggle="confirm_password" aria-label="{{ _('Show password') }}" aria-pressed="false">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
             </div>
-            <button type="submit" class="btn">Register</button>
+            <button type="submit" class="btn btn-primary btn-lg btn-block">{{ _('Create account') }}</button>
         </form>
-        <p>Already have an account? <a href="{{ url_for('auth.login') }}">Login here</a></p>
+
+        <p class="auth-switch">{{ _('Already have an account?') }} <a href="{{ url_for('auth.login') }}">{{ _('Log in') }}</a></p>
     </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
 {% endblock %}

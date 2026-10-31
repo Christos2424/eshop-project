@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Manage Products - eShop Admin{% endblock %}
+{% block title %}{{ _('Manage Products') }} - eShop Admin{% endblock %}
 
 {% block content %}
 
@@ -8,15 +8,15 @@
 <div class="admin-products-container">
     <div class="admin-header">
         <div class="header-content">
-            <h1><i class="fas fa-boxes"></i> Products Management </h1>
-            <p> Manage your store's products and inventory </p>
+            <h1><i class="fas fa-boxes"></i> {{ _('Products Management') }}</h1>
+            <p>{{ _('Manage your store\'s products and inventory') }}</p>
         </div>
         <div class="header-actions">
             <a href="{{ url_for('orders.user_orders') }}" class="btn btn-outline">
-                <i class="fas fa-receipt"></i> View Orders
+                <i class="fas fa-receipt"></i> {{ _('View Orders') }}
             </a>
             <a href="{{ url_for('admin.add_product') }}" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Add New Product
+                <i class="fas fa-plus"></i> {{ _('Add New Product') }}
             </a>
         </div>
     </div>
@@ -24,78 +24,78 @@
     <div class="admin-stats">
         <div class="stat-item">
             <div class="stat-number">{{ products|length }}</div>
-            <div class="stat-label">Total Products</div>
+            <div class="stat-label">{{ _('Total Products') }}</div>
         </div>
         <div class="stat-item">
             <div class="stat-number">{{ products|selectattr('stock_quantity', 'gt', 0)|list|length }}</div>
-            <div class="stat-label">In Stock</div>
+            <div class="stat-label">{{ _('In Stock') }}</div>
         </div>
         <div class="stat-item">
             <div class="stat-number">{{ products|selectattr('stock_quantity', 'eq', 0)|list|length }}</div>
-            <div class="stat-label">Out of Stock</div>
+            <div class="stat-label">{{ _('Out of Stock') }}</div>
         </div>
         <div class="stat-item">
             <div class="stat-number">{{ products|selectattr('stock_quantity', 'lt', 10)|selectattr('stock_quantity', 'gt', 0)|list|length }}</div>
-            <div class="stat-label">Low Stock</div>
+            <div class="stat-label">{{ _('Low Stock') }}</div>
         </div>
     </div>
 
     <!-- Products Table -->
     <div class="table-section">
         <h2 class="section-title">
-            <i class="fas fa-box"></i> Products
-            <span style="font-size: 0.9rem; color: var(--text-light); margin-left: 12px;">
-            </span>
+            <i class="fas fa-box"></i> {{ _('Products') }}
         </h2>
-        
+
         <!-- Products Filters -->
         <div class="admin-filters">
             <div class="filter-section">
                 <div class="filter-row">
                     <div class="filter-group">
-                        <label for="stockFilter"><i class="fas fa-filter"></i> Stock Status</label>
+                        <label for="stockFilter"><i class="fas fa-filter"></i> {{ _('Stock Status') }}</label>
                         <select id="stockFilter" class="filter-select">
-                            <option value="all">All Products</option>
-                            <option value="in_stock">In Stock</option>
-                            <option value="low_stock">Low Stock</option>
-                            <option value="out_of_stock">Out of Stock</option>
+                            <option value="all">{{ _('All Products') }}</option>
+                            <option value="in_stock">{{ _('In Stock') }}</option>
+                            <option value="low_stock">{{ _('Low Stock') }}</option>
+                            <option value="out_of_stock">{{ _('Out of Stock') }}</option>
                         </select>
                     </div>
-                    
+
                     <div class="filter-group">
-                        <label for="productSortBy"><i class="fas fa-sort"></i> Sort By</label>
+                        <label for="productSortBy"><i class="fas fa-sort"></i> {{ _('Sort by') }}</label>
                         <select id="productSortBy" class="filter-select">
-                            <option value="id_asc">ID: Low to High</option>
-                            <option value="id_desc">ID: High to Low</option>
-                            <option value="name_asc">Name: A to Z</option>
-                            <option value="name_desc">Name: Z to A</option>
-                            <option value="price_asc">Price: Low to High</option>
-                            <option value="price_desc">Price: High to Low</option>
+                            <option value="id_asc">{{ _('ID: Low to High') }}</option>
+                            <option value="id_desc">{{ _('ID: High to Low') }}</option>
+                            <option value="name_asc">{{ _('Name: A to Z') }}</option>
+                            <option value="name_desc">{{ _('Name: Z to A') }}</option>
+                            <option value="price_asc">{{ _('Price: low to high') }}</option>
+                            <option value="price_desc">{{ _('Price: high to low') }}</option>
                         </select>
                     </div>
                 </div>
             </div>
         </div>
-        
+
         <div class="table-container">
             <table class="data-table">
                 <thead>
                     <tr>
                         <th class="id-col">ID</th>
-                        <th class="image-col">Image</th>
-                        <th class="name-col">Product</th>
-                        <th class="price-col">Price</th>
-                        <th class="stock-col">Stock</th>
-                        <th class="category-col">Category</th>
-                        <th class="actions-col">Actions</th>
+                        <th class="image-col">{{ _('Image') }}</th>
+                        <th class="name-col">{{ _('Product') }}</th>
+                        <th class="price-col">{{ _('Price') }}</th>
+                        <th class="stock-col">{{ _('Stock') }}</th>
+                        <th class="category-col">{{ _('Category') }}</th>
+                        <th class="actions-col">{{ _('Actions') }}</th>
                     </tr>
                 </thead>
                 <tbody id="productsTableBody">
                     {% for product in products %}
-                    <tr class="data-row clickable-row" 
+                    {% set name = product|localized('name') %}
+                    {% set description = product|localized('description') %}
+                    <tr class="data-row clickable-row"
                         data-href="{{ url_for('main.product_detail', product_id=product.product_id) }}"
                         data-id="{{ product.product_id }}"
-                        data-name="{{ product.name }}"
+                        data-name="{{ name }}"
                         data-price="{{ product.price }}"
                         data-stock="{{ product.stock_quantity }}">
                         <td class="id-cell">
@@ -103,26 +103,26 @@
                         </td>
                         <td class="image-cell">
                             <div class="image-wrapper">
-                                <img src="{{ get_image_url(product.image_url) }}" 
-                                     alt="{{ product.name }}" 
+                                <img src="{{ get_image_url(product.image_url) }}"
+                                     alt="{{ name }}"
                                      class="table-image">
                                 {% if product.stock_quantity == 0 %}
-                                <div class="status-badge out-of-stock">Out</div>
+                                <div class="status-badge out-of-stock">{{ _('Out') }}</div>
                                 {% elif product.stock_quantity < 10 %}
-                                <div class="status-badge low-stock">Low</div>
+                                <div class="status-badge low-stock">{{ _('Low') }}</div>
                                 {% endif %}
                             </div>
                         </td>
                         <td class="name-cell">
                             <div class="product-info">
-                                <div class="product-name">{{ product.name }}</div>
-                                {% if product.description %}
-                                <div class="product-description">{{ product.description|truncate(60) }}</div>
+                                <div class="product-name">{{ name }}</div>
+                                {% if description %}
+                                <div class="product-description">{{ description|truncate(60) }}</div>
                                 {% endif %}
                             </div>
                         </td>
                         <td class="price-cell">
-                            <span class="price">${{ "%.2f"|format(product.price) }}</span>
+                            <span class="price">{{ product.price|currency }}</span>
                         </td>
                         <td class="stock-cell">
                             <div class="stock-info">
@@ -130,24 +130,24 @@
                                     {{ product.stock_quantity }}
                                 </span>
                                 <div class="stock-bar">
-                                    <div class="stock-fill {{ 'low' if product.stock_quantity < 10 else '' }} {{ 'out' if product.stock_quantity == 0 else '' }}" 
+                                    <div class="stock-fill {{ 'low' if product.stock_quantity < 10 else '' }} {{ 'out' if product.stock_quantity == 0 else '' }}"
                                          style="width: {{ (product.stock_quantity / 50 * 100) if product.stock_quantity <= 50 else 100 }}%">
                                     </div>
                                 </div>
                             </div>
                         </td>
                         <td class="category-cell">
-                            <span class="category-tag">{{ product.category or 'Uncategorized' }}</span>
+                            <span class="category-tag">{{ category_label(product.category) if product.category else _('Uncategorized') }}</span>
                         </td>
                         <td class="actions-cell">
                             <div class="action-buttons">
-                                <a href="{{ url_for('admin.edit_product', product_id=product.product_id) }}" class="btn-action btn-edit" title="Edit Product">
+                                <a href="{{ url_for('admin.edit_product', product_id=product.product_id) }}" class="btn-action btn-edit" title="{{ _('Edit Product') }}">
                                     <i class="fas fa-edit"></i>
                                 </a>
                                 <form action="{{ url_for('admin.delete_product', product_id=product.product_id) }}" method="post" class="action-form">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn-action btn-delete" title="Delete Product"
-                                            onclick="return confirm('Are you sure you want to delete {{ product.name }}?')">
+                                    <button type="submit" class="btn-action btn-delete" title="{{ _('Delete Product') }}"
+                                            data-confirm="{{ _('Are you sure you want to delete {name}?', name=name) }}">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </form>
@@ -159,10 +159,10 @@
                         <td colspan="7">
                             <div class="empty-state">
                                 <i class="fas fa-box-open"></i>
-                                <h3>No Products Found</h3>
-                                <p>Get started by adding your first product</p>
+                                <h3>{{ _('No Products Found') }}</h3>
+                                <p>{{ _('Get started by adding your first product') }}</p>
                                 <a href="{{ url_for('admin.add_product') }}" class="btn btn-primary">
-                                    <i class="fas fa-plus"></i> Add Product
+                                    <i class="fas fa-plus"></i> {{ _('Add Product') }}
                                 </a>
                             </div>
                         </td>

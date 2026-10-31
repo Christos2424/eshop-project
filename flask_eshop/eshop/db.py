@@ -5,7 +5,10 @@ from contextlib import contextmanager
 
 import click
 from flask import current_app, g
+from flask.cli import with_appcontext
 
+from .i18n import fold
+from .sample_data import SAMPLE_PRODUCTS
 from .security import hash_password
 
 
@@ -14,6 +17,8 @@ def get_db():
     if '_database' not in g:
         g._database = sqlite3.connect(current_app.config['DATABASE'])
         g._database.row_factory = sqlite3.Row
+        # fold(text) in SQL: case- and accent-insensitive search (see i18n.fold)
+        g._database.create_function('fold', 1, fold, deterministic=True)
     return g._database
 
 
@@ -45,6 +50,17 @@ def get_categories():
         return [row[0] for row in cur.fetchall()]
 
 
+def get_category_counts():
+    """Categories with how many products each has, for menus and filter chips"""
+    with get_cursor() as cur:
+        cur.execute("""
+            SELECT category AS name, COUNT(*) AS count FROM products
+            WHERE category IS NOT NULL AND category != ''
+            GROUP BY category ORDER BY category
+        """)
+        return [dict(row) for row in cur.fetchall()]
+
+
 def init_db(database):
     """Initialize the database with required tables and sample data"""
     conn = sqlite3.connect(database)
@@ -68,7 +84,9 @@ def init_db(database):
         CREATE TABLE IF NOT EXISTS products(
             product_id INTEGER PRIMARY KEY AUTOINCREMENT,
             name VARCHAR(100) NOT NULL,
+            name_el VARCHAR(100),
             description TEXT,
+            description_el TEXT,
             price DECIMAL(10,2) NOT NULL,
             stock_quantity INTEGER NOT NULL DEFAULT 0,
             category VARCHAR(50),
@@ -102,6 +120,12 @@ def init_db(database):
         )
     ''')
 
+    # Greek name/description were added later; add the columns to older databases
+    product_columns = {row['name'] for row in cursor.execute("PRAGMA table_info(products)")}
+    for column in ('name_el', 'description_el'):
+        if column not in product_columns:
+            cursor.execute(f"ALTER TABLE products ADD COLUMN {column} TEXT")
+
     # Create indexes for better performance
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_products_category ON products(category)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_products_stock ON products(stock_quantity)')
@@ -126,23 +150,39 @@ def init_db(database):
     cursor.execute("SELECT COUNT(*) as count FROM products")
     result = cursor.fetchone()
     if result[0] == 0:
-        # Insert sample products
-        sample_products = [
-            ('Laptop', 'High-performance laptop with 16GB RAM and 512GB SSD', 999.99, 10, 'Electronics', None),
-            ('Wireless Mouse', 'Ergonomic wireless mouse with long battery life', 29.99, 50, 'Electronics', None),
-            ('Mechanical Keyboard', 'RGB mechanical keyboard with blue switches', 79.99, 25, 'Electronics', None),
-            ('Headphones', 'Noise-cancelling Bluetooth headphones', 199.99, 15, 'Electronics', None),
-            ('Smartphone', 'Latest smartphone with high-resolution camera', 699.99, 30, 'Electronics', None),
-            ('Tablet', '10-inch tablet with stylus support', 399.99, 20, 'Electronics', None),
-        ]
-
-        cursor.executemany('''
-            INSERT INTO products (name, description, price, stock_quantity, category, image_url)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', sample_products)
+        seed_products(conn)
 
     conn.commit()
     conn.close()
+
+
+def seed_products(conn):
+    """Add the sample catalog. Products that already exist (same name) are not added again,
+    but get the Greek name and description if they don't have one yet.
+
+    Returns (added, translated) counts.
+    """
+    cursor = conn.cursor()
+    cursor.execute("SELECT product_id, name, name_el FROM products")
+    existing = {row[1].casefold(): (row[0], row[2]) for row in cursor.fetchall()}
+
+    added = translated = 0
+    for product in SAMPLE_PRODUCTS:
+        match = existing.get(product['name'].casefold())
+        if match is None:
+            cursor.execute('''
+                INSERT INTO products (name, name_el, description, description_el, price, stock_quantity, category)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (product['name'], product['name_el'], product['description'], product['description_el'],
+                  product['price'], product['stock'], product['category']))
+            added += 1
+        elif not match[1]:
+            cursor.execute("UPDATE products SET name_el = ?, description_el = ? WHERE product_id = ?",
+                           (product['name_el'], product['description_el'], match[0]))
+            translated += 1
+
+    conn.commit()
+    return added, translated
 
 
 @click.command('init-db')
@@ -150,6 +190,14 @@ def init_db_command():
     """Create tables, the admin user and sample products if missing."""
     init_db(current_app.config['DATABASE'])
     click.echo('Database initialized successfully!')
+
+
+@click.command('seed-products')
+@with_appcontext
+def seed_products_command():
+    """Add the sample catalog to an existing database (safe to run more than once)."""
+    added, translated = seed_products(get_db())
+    click.echo(f"Added {added} sample products; added Greek text to {translated} existing ones.")
 
 
 @click.command('set-password')
@@ -169,6 +217,7 @@ def set_password_command(email, password):
 def init_app(app):
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
+    app.cli.add_command(seed_products_command)
     app.cli.add_command(set_password_command)
     # Always ensure tables exist
     init_db(app.config['DATABASE'])
