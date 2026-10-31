@@ -50,6 +50,7 @@
                 <div class="product-actions">
                     {% if product.stock_quantity > 0 %}
                     <form action="{{ url_for('cart.add_to_cart') }}" method="post" class="add-to-cart-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="product_id" value="{{ product.product_id }}">
                         <input type="hidden" name="quantity" value="1">
                         <button type="submit" class="btn btn-primary">

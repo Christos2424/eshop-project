@@ -1,10 +1,14 @@
 import os
+import secrets
 
-from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
+from flask_wtf.csrf import CSRFProtect, CSRFError
 from werkzeug.exceptions import HTTPException
 
 from . import db
 from .config import Config
+
+csrf = CSRFProtect()
 
 
 def create_app(test_config=None):
@@ -13,14 +17,17 @@ def create_app(test_config=None):
     if test_config:
         app.config.update(test_config)
 
+    # Ensure instance directory exists
+    os.makedirs(app.instance_path, exist_ok=True)
+
+    if not app.config['SECRET_KEY']:
+        app.config['SECRET_KEY'] = load_or_create_secret_key(app.instance_path)
     if not app.config['DATABASE']:
         app.config['DATABASE'] = os.path.join(app.instance_path, 'eshop.db')
-    app.config['UPLOAD_FOLDER'] = os.path.join(app.static_folder, 'uploads')
-
-    # Ensure instance and upload directories exist
-    os.makedirs(app.instance_path, exist_ok=True)
+    app.config['UPLOAD_FOLDER'] = os.path.join(app.instance_path, 'uploads')
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+    csrf.init_app(app)
     db.init_app(app)
 
     from .routes import main, auth, cart, orders, admin
@@ -32,6 +39,11 @@ def create_app(test_config=None):
 
     register_template_helpers(app)
     register_error_handlers(app)
+
+    # Product images uploaded by admins
+    @app.route('/uploads/<path:filename>')
+    def uploaded_file(filename):
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
     # Favicon route to prevent 404 errors
     @app.route('/favicon.ico')
@@ -47,6 +59,18 @@ def create_app(test_config=None):
     return app
 
 
+def load_or_create_secret_key(instance_path):
+    """Read the secret key from instance/secret_key, generating it on first run"""
+    path = os.path.join(instance_path, 'secret_key')
+    if os.path.exists(path):
+        with open(path) as f:
+            return f.read().strip()
+    key = secrets.token_hex(32)
+    with open(path, 'w') as f:
+        f.write(key)
+    return key
+
+
 def register_template_helpers(app):
     @app.context_processor
     def utility_processor():
@@ -56,7 +80,7 @@ def register_template_helpers(app):
 
             # If it starts with uploads/, it's a local file
             if image_url.startswith('uploads/'):
-                return url_for('static', filename=image_url)
+                return url_for('uploaded_file', filename=image_url.removeprefix('uploads/'))
 
             # Otherwise, it's an external URL
             return image_url
@@ -74,15 +98,23 @@ def register_template_helpers(app):
 def register_error_handlers(app):
     @app.errorhandler(404)
     def not_found_error(error):
-        return render_template('404.html'), 404
+        return render_template('errors/404.html'), 404
 
     @app.errorhandler(500)
     def internal_error(error):
-        return render_template('500.html'), 500
+        return render_template('errors/500.html'), 500
 
     @app.errorhandler(413)
     def too_large(error):
         flash('File too large. Maximum size is 16MB.', 'danger')
+        return redirect(request.referrer or url_for('main.home'))
+
+    @app.errorhandler(CSRFError)
+    def csrf_error(error):
+        message = 'Your session expired. Please try again.'
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': message, 'error': message}), 400
+        flash(message, 'warning')
         return redirect(request.referrer or url_for('main.home'))
 
     @app.errorhandler(Exception)
@@ -91,4 +123,4 @@ def register_error_handlers(app):
         if isinstance(error, HTTPException):
             return error
         flash('An unexpected error occurred. Please try again.', 'danger')
-        return render_template('500.html'), 500
+        return render_template('errors/500.html'), 500

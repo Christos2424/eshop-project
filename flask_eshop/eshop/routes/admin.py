@@ -39,7 +39,7 @@ def products():
             """)
             orders = cur.fetchall()
 
-        return render_template('admin_products.html', products=products, orders=orders)
+        return render_template('admin/products.html', products=products, orders=orders)
     except Exception as e:
         flash(f"Error: {str(e)}", 'danger')
         return redirect(url_for('main.home'))
@@ -52,7 +52,7 @@ def add_product():
         if validation_errors:
             for error in validation_errors:
                 flash(error, 'danger')
-            return render_template('add_product.html')
+            return render_template('admin/add_product.html')
 
         name = request.form['name']
         description = request.form['description']
@@ -91,9 +91,9 @@ def add_product():
             return redirect(url_for('admin.products'))
         except Exception as e:
             flash(f"Error adding product: {str(e)}", 'danger')
-            return render_template('add_product.html')
+            return render_template('admin/add_product.html')
 
-    return render_template('add_product.html')
+    return render_template('admin/add_product.html')
 
 
 @bp.route('/edit_product/<int:product_id>', methods=['GET', 'POST'])
@@ -155,7 +155,7 @@ def edit_product(product_id):
                 if not product:
                     flash('Product not found', 'danger')
                     return redirect(url_for('admin.products'))
-                return render_template('edit_product.html', product=product)
+                return render_template('admin/edit_product.html', product=product)
     except Exception as e:
         flash(f"Error: {str(e)}", 'danger')
         return redirect(url_for('admin.products'))

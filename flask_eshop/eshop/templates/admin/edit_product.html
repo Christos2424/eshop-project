@@ -10,6 +10,7 @@
 
 <div class="form-container">
     <form method="POST" action="{{ url_for('admin.edit_product', product_id=product.product_id) }}" class="product-form" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-section">
             <h3><i class="fas fa-info-circle"></i> Basic Information</h3>
             
@@ -49,7 +50,7 @@
             <div class="current-image">
                 <h4>Current Image</h4>
                 <div class="image-preview">
-                    <img src="{{ url_for('static', filename=product.image_url) if product.image_url and product.image_url.startswith('uploads/') else product.image_url }}" 
+                    <img src="{{ get_image_url(product.image_url) }}" 
                          alt="{{ product.name }}" class="product-image-preview">
                     <div class="image-actions">
                         <label class="checkbox-label">

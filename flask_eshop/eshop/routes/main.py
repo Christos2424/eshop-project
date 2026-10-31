@@ -83,7 +83,7 @@ def home():
         categories = get_categories()
         total_pages = (total + per_page - 1) // per_page
 
-        return render_template('index.html',
+        return render_template('shop/index.html',
                                products=products,
                                page=page,
                                per_page=per_page,
@@ -98,7 +98,7 @@ def home():
                                max_price=max_price)
     except Exception as e:
         flash(f"Error loading products: {str(e)}", 'danger')
-        return render_template('index.html', products=[], page=1, total=0, total_pages=0, categories=[])
+        return render_template('shop/index.html', products=[], page=1, total=0, total_pages=0, categories=[])
 
 
 @bp.route('/search')
@@ -126,7 +126,7 @@ def product_detail(product_id):
             flash('Product not found', 'danger')
             return redirect(url_for('main.home'))
 
-        return render_template('product.html', product=product)
+        return render_template('shop/product.html', product=product)
 
     except Exception as e:
         flash(f"Error loading product: {str(e)}", 'danger')

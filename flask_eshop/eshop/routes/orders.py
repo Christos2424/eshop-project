@@ -10,7 +10,7 @@ bp = Blueprint('orders', __name__)
 @login_required
 def user_orders():
     is_admin = session.get('role') == 'admin'
-    template = 'admin_orders.html' if is_admin else 'user_orders.html'
+    template = 'admin/orders.html' if is_admin else 'orders/user_orders.html'
 
     try:
         with get_cursor() as cur:

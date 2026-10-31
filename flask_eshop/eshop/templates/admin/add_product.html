@@ -10,6 +10,7 @@
 
 <div class="form-container">
     <form method="POST" action="{{ url_for('admin.add_product') }}" class="product-form" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-section">
             <h3><i class="fas fa-info-circle"></i> Basic Information</h3>
             

@@ -17,6 +17,7 @@
                 <h2 class="section-title"><i class="fas fa-shipping-fast"></i> Shipping Information</h2>
                 
                 <form action="{{ url_for('cart.checkout') }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="form-section">
                         <div class="form-row">
                             <div class="form-group">
