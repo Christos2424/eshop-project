@@ -39,6 +39,29 @@ def validate_product_data(data):
     return errors
 
 
+REVIEW_TITLE_MAX = 100
+REVIEW_BODY_MIN = 10
+REVIEW_BODY_MAX = 2000
+
+
+def validate_review_data(data):
+    errors = []
+
+    if data.get('rating', '') not in ('1', '2', '3', '4', '5'):
+        errors.append("Please choose a rating from 1 to 5 stars")
+
+    if len(data.get('title', '').strip()) > REVIEW_TITLE_MAX:
+        errors.append("Review title can be at most 100 characters")
+
+    body = data.get('body', '').strip()
+    if len(body) < REVIEW_BODY_MIN:
+        errors.append("Review must be at least 10 characters")
+    elif len(body) > REVIEW_BODY_MAX:
+        errors.append("Review can be at most 2000 characters")
+
+    return errors
+
+
 def validate_user_data(data):
     errors = []
 

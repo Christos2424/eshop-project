@@ -12,20 +12,19 @@
     color: #fff;
     background:
         radial-gradient(circle at 88% 12%, rgba(var(--accent-rgb), 0.5), transparent 42%),
-        radial-gradient(circle at 8% 100%, rgba(242, 243, 245, 0.1), transparent 45%),
+        radial-gradient(circle at 8% 100%, rgba(242, 240, 239, 0.1), transparent 45%),
         linear-gradient(135deg, var(--ink) 0%, var(--primary-700) 50%, var(--primary) 100%);
     box-shadow: 0 30px 60px -30px rgba(var(--ink-rgb), 0.6);
 }
 
-/* Subtle grid texture */
+/* Decorative shopping carts */
 .hero::after {
     content: '';
     position: absolute;
     inset: 0;
-    background-image:
-        linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-    background-size: 44px 44px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg transform='translate(14 16) rotate(-12 14 14)'%3E%3Cpath d='M0 2h5l4 17h16l4-12H8'/%3E%3Ccircle cx='12' cy='25' r='2'/%3E%3Ccircle cx='24' cy='25' r='2'/%3E%3C/g%3E%3Cg transform='translate(72 70) rotate(10 14 14) scale(.8)'%3E%3Cpath d='M0 2h5l4 17h16l4-12H8'/%3E%3Ccircle cx='12' cy='25' r='2'/%3E%3Ccircle cx='24' cy='25' r='2'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 120px 120px;
+    opacity: 0.12;
     mask-image: linear-gradient(90deg, transparent, #000 40%, #000 60%, transparent);
     -webkit-mask-image: linear-gradient(90deg, transparent, #000 40%, #000 60%, transparent);
     pointer-events: none;
@@ -35,24 +34,6 @@
 .hero-perks {
     position: relative;
     z-index: 1;
-}
-
-.hero-eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.35rem 0.85rem;
-    margin-bottom: 1.25rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--on-dark);
-}
-
-.hero-eyebrow i {
-    color: var(--accent-light);
 }
 
 .hero h1 {
@@ -66,7 +47,7 @@
 
 .hero p {
     max-width: 480px;
-    color: #d0d9e3;
+    color: #f2f0ef;
     font-size: 1.05rem;
     margin-bottom: 1.75rem;
 }
@@ -119,7 +100,7 @@
 
 .hero-perks span {
     font-size: 0.82rem;
-    color: #d0d9e3;
+    color: #f2f0ef;
 }
 
 /* Shop controls */
@@ -427,6 +408,46 @@
     position: absolute;
     inset: 0;
     z-index: 1;
+}
+
+.card-rating {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.4rem;
+}
+
+.card-rating .stars {
+    display: inline-flex;
+    gap: 0.1rem;
+    color: #f59e0b;
+    font-size: 0.75rem;
+}
+
+.card-rating .stars .far {
+    color: var(--line-strong);
+}
+
+.card-rating-count {
+    font-size: 0.78rem;
+    color: var(--muted);
+}
+
+.card-rating.is-empty .card-rating-count {
+    color: var(--line-strong);
+}
+
+.mini-card .card-rating {
+    gap: 0.3rem;
+    margin: 0.2rem 0 0.15rem;
+}
+
+.mini-card .card-rating .stars {
+    font-size: 0.65rem;
+}
+
+.mini-card .card-rating-count {
+    font-size: 0.72rem;
 }
 
 .card-desc {

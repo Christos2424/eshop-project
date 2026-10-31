@@ -44,6 +44,14 @@ def get_cursor():
         cursor.close()
 
 
+# Average rating and number of reviews, for queries that select FROM products:
+#   SELECT *, {RATING_COLUMNS} FROM products ...
+RATING_COLUMNS = """
+    (SELECT ROUND(AVG(rating), 1) FROM reviews WHERE reviews.product_id = products.product_id) AS rating,
+    (SELECT COUNT(*) FROM reviews WHERE reviews.product_id = products.product_id) AS review_count
+"""
+
+
 def get_categories():
     with get_cursor() as cur:
         cur.execute("SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != '' ORDER BY category")
@@ -120,6 +128,23 @@ def init_db(database):
         )
     ''')
 
+    # Create reviews table: one review per customer per product
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS reviews(
+            review_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+            title VARCHAR(100),
+            body TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP,
+            UNIQUE(product_id, user_id),
+            FOREIGN KEY (product_id) REFERENCES products(product_id),
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        )
+    ''')
+
     # Greek name/description were added later; add the columns to older databases
     product_columns = {row['name'] for row in cursor.execute("PRAGMA table_info(products)")}
     for column in ('name_el', 'description_el'):
@@ -133,6 +158,7 @@ def init_db(database):
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews(user_id)')
 
     # Create admin user if it doesn't exist
     cursor.execute("SELECT 1 FROM users WHERE username = 'admin'")

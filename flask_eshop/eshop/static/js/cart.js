@@ -1,4 +1,4 @@
-// Cart Page JavaScript: change quantities and remove items without reloading the page.
+// Cart Page JavaScript: change quantities (minus at 1 removes the item) without reloading the page.
 // The forms still work on their own; this sends them with AJAX and updates the totals.
 document.addEventListener('DOMContentLoaded', function() {
     const page = document.getElementById('cartPage');
@@ -13,16 +13,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const productId = row.dataset.productId;
         row.classList.add('is-updating');
         try {
-            let data;
-            if (form.classList.contains('cart-remove-form')) {
-                data = await removeCartItem(productId);
-            } else {
-                const current = parseInt(row.querySelector('[data-qty]').textContent, 10);
-                data = await updateCartItem(productId, current + parseInt(form.dataset.step, 10));
-            }
+            const current = parseInt(row.querySelector('[data-qty]').textContent, 10);
+            const data = await updateCartItem(productId, current + parseInt(form.dataset.step, 10));
 
             if (!data.success) showToast(data.message, 'warning');
             applyCart(data.cart);
+            // The row is gone, so reload the page to bring it back on undo
+            if (data.success && !data.cart.items.some(item => String(item.id) === productId)) {
+                showRemovedToast(productId, () => window.location.reload());
+            }
         } catch (error) {
             console.error('Error updating cart:', error);
             showToast(t('Could not update your cart. Please try again.'), 'error');
@@ -53,7 +52,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const minus = row.querySelector('[data-step="-1"]');
             const plus = row.querySelector('[data-step="1"]');
-            minus.querySelector('button').disabled = item.quantity <= 1;
+            const minusButton = minus.querySelector('button');
+            minusButton.setAttribute('aria-label', item.quantity <= 1 ? minusButton.dataset.removeLabel : t('Decrease quantity'));
             plus.querySelector('button').disabled = item.quantity >= item.stock;
             // Keep the no-JS fallback values right too
             minus.querySelector('[name="quantity"]').value = item.quantity - 1;

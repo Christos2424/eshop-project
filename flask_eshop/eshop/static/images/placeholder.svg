@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
   <!-- Shown for products without an image (and images that fail to load) -->
-  <rect width="120" height="120" fill="#edf1f5"/>
-  <g fill="none" stroke="#748cab" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+  <rect width="120" height="120" fill="#f2f0ef"/>
+  <g fill="none" stroke="#245f73" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
     <rect x="30" y="34" width="60" height="52" rx="6"/>
     <circle cx="48" cy="51" r="6"/>
     <path d="M32 80l20-18 12 10 10-8 14 12"/>

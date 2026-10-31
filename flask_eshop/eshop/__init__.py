@@ -33,13 +33,14 @@ def create_app(test_config=None):
     db.init_app(app)
     i18n.load_catalogs(app)
 
-    from .routes import main, auth, cart, orders, admin, api
+    from .routes import main, auth, cart, orders, admin, api, reviews
     app.register_blueprint(main.bp)
     app.register_blueprint(auth.bp)
     app.register_blueprint(cart.bp)
     app.register_blueprint(orders.bp)
     app.register_blueprint(admin.bp)
     app.register_blueprint(api.bp)
+    app.register_blueprint(reviews.bp)
 
     register_template_helpers(app)
     register_error_handlers(app)
@@ -87,7 +88,7 @@ def load_or_create_secret_key(instance_path):
 def register_template_helpers(app):
     @app.template_filter('currency')
     def currency(value):
-        return f"${value or 0:,.2f}"
+        return f"€{value or 0:,.2f}"
 
     # Translations: {{ _('Text') }}, {{ ngettext('{n} item', '{n} items', n) }}, {{ product|localized('name') }}
     app.jinja_env.globals.update(

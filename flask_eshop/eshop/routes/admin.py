@@ -183,6 +183,7 @@ def delete_product(product_id):
             if order_count > 0:
                 flash(_('Cannot delete product that has been ordered. Consider archiving instead.'), 'danger')
             else:
+                cur.execute("DELETE FROM reviews WHERE product_id = ?", (product_id,))
                 cur.execute("DELETE FROM products WHERE product_id = ?", (product_id,))
                 if cur.rowcount:
                     flash(_('Product deleted successfully!'), 'success')

@@ -31,4 +31,7 @@ def product_to_dict(product):
         'image': image_src(product['image_url']),
         'art': placeholder_art(product['category']),
         'url': url_for('main.product_detail', product_id=product['product_id']),
+        # Only present when the query selected RATING_COLUMNS
+        'rating': product['rating'] if 'rating' in product.keys() else None,
+        'review_count': product['review_count'] if 'review_count' in product.keys() else None,
     }
