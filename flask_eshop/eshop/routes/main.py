@@ -1,104 +1,142 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
+import json
+
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, session
 
 from ..db import get_cursor, get_categories
+from ..i18n import LANGUAGES, catalogs, category_label, fold, gettext as _, name_sql
+from ..utils import is_ajax, is_safe_redirect
 
 bp = Blueprint('main', __name__)
 
+# {name} is replaced by the product name column for the current language;
+# fold() makes A-Z ignore case and Greek accents
 SORT_MAP = {
     'newest': 'created_at DESC',
     'oldest': 'created_at ASC',
     'price_low': 'price ASC',
     'price_high': 'price DESC',
-    'name_az': 'name ASC',
-    'name_za': 'name DESC'
+    'name_az': 'fold({name}) ASC',
+    'name_za': 'fold({name}) DESC'
 }
+
+# Filter values that mean "no filter", left out of URLs
+FILTER_DEFAULTS = {'q': '', 'category': '', 'stock': 'all', 'sort': 'newest', 'min_price': '', 'max_price': ''}
+
+STOCK_LABELS = {'in_stock': 'In stock', 'out_of_stock': 'Out of stock'}
+
+
+def search_condition(query):
+    """SQL condition and params matching a search box query against the English and Greek
+    names and the category (in either language), ignoring case and accents"""
+    folded = fold(query)
+    like = f'%{folded}%'
+    conditions = ["fold(name) LIKE ?", "fold(name_el) LIKE ?", "fold(category) LIKE ?"]
+    params = [like, like, like]
+
+    # Categories are stored in English: also match their translated names (e.g. 'βιβλ' finds Books)
+    matching = [c for c in get_categories() if folded in fold(category_label(c))]
+    if matching:
+        conditions.append(f"category IN ({','.join('?' * len(matching))})")
+        params.extend(matching)
+
+    return "(" + " OR ".join(conditions) + ")", params
+
+
+def read_filters(args):
+    return {key: args.get(key, default).strip() for key, default in FILTER_DEFAULTS.items()}
+
+
+def active_params(filters):
+    """Only the filters that differ from their defaults, for building clean URLs"""
+    return {key: value for key, value in filters.items() if value and value != FILTER_DEFAULTS[key]}
+
+
+def filter_pills(filters):
+    """Removable labels for the active filters, each with the URL that drops it"""
+    labels = {
+        'q': lambda v: _('Search: {query}', query=v),
+        'category': category_label,
+        'stock': lambda v: _(STOCK_LABELS[v]) if v in STOCK_LABELS else None,
+        'min_price': lambda v: _('From ${price}', price=v),
+        'max_price': lambda v: _('Up to ${price}', price=v),
+    }
+    params = active_params(filters)
+    pills = []
+    for key, label in labels.items():
+        if key in params and label(params[key]):
+            remaining = {k: v for k, v in params.items() if k != key}
+            pills.append({'label': label(params[key]), 'url': url_for('main.home', **remaining)})
+    return pills
+
+
+def query_products(filters, page, per_page):
+    """Return (products, total) for one page of products matching the filters"""
+    conditions = []
+    params = []
+
+    if filters['q']:
+        condition, search_params = search_condition(filters['q'])
+        conditions.append(condition)
+        params.extend(search_params)
+
+    if filters['category']:
+        conditions.append("category = ?")
+        params.append(filters['category'])
+
+    # Stock filter; 'all' shows everything, so no condition needed
+    if filters['stock'] == 'in_stock':
+        conditions.append("stock_quantity > 0")
+    elif filters['stock'] == 'out_of_stock':
+        conditions.append("stock_quantity = 0")
+
+    # Price range filtering
+    for key, operator in (('min_price', '>='), ('max_price', '<=')):
+        if filters[key]:
+            try:
+                params.append(float(filters[key]))
+                conditions.append(f"price {operator} ?")
+            except ValueError:
+                pass
+
+    where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
+    sort_clause = SORT_MAP.get(filters['sort'], 'created_at DESC').format(name=name_sql())
+
+    with get_cursor() as cur:
+        cur.execute("SELECT COUNT(*) FROM products" + where_clause, params)
+        total = cur.fetchone()[0]
+
+        cur.execute(
+            f"SELECT * FROM products{where_clause} ORDER BY {sort_clause}, product_id DESC LIMIT ? OFFSET ?",
+            params + [per_page, (page - 1) * per_page]
+        )
+        products = cur.fetchall()
+
+    return products, total
 
 
 @bp.route("/")
 def home():
-    page = request.args.get('page', 1, type=int)
-    search_query = request.args.get('q', '')
-    category = request.args.get('category', '')
-    stock_filter = request.args.get('stock', 'all')  # 'all', 'in_stock', 'out_of_stock'
-    sort_by = request.args.get('sort', 'newest')
-    min_price = request.args.get('min_price', '')
-    max_price = request.args.get('max_price', '')
+    page = max(request.args.get('page', 1, type=int), 1)
     per_page = current_app.config['PRODUCTS_PER_PAGE']
+    filters = read_filters(request.args)
+
+    context = dict(filters=filters, filter_params=active_params(filters), pills=filter_pills(filters),
+                   page=page, products=[], total=0, total_pages=0, store_total=0)
 
     try:
+        products, total = query_products(filters, page, per_page)
+        context.update(products=products, total=total, total_pages=(total + per_page - 1) // per_page)
+
         with get_cursor() as cur:
-            # Build query based on filters
-            query = "SELECT * FROM products"
-            count_query = "SELECT COUNT(*) FROM products"
-            params = []
-            conditions = []
-
-            if search_query:
-                conditions.append("name LIKE ?")
-                params.append(f'%{search_query}%')
-
-            if category:
-                conditions.append("category = ?")
-                params.append(category)
-
-            # Stock filter
-            if stock_filter == 'in_stock':
-                conditions.append("stock_quantity > 0")
-            elif stock_filter == 'out_of_stock':
-                conditions.append("stock_quantity = 0")
-            # 'all' shows everything, so no condition needed
-
-            # Price range filtering
-            if min_price:
-                try:
-                    params.append(float(min_price))
-                    conditions.append("price >= ?")
-                except ValueError:
-                    pass
-
-            if max_price:
-                try:
-                    params.append(float(max_price))
-                    conditions.append("price <= ?")
-                except ValueError:
-                    pass
-
-            if conditions:
-                where_clause = " WHERE " + " AND ".join(conditions)
-                query += where_clause
-                count_query += where_clause
-
-            # Get total count
-            cur.execute(count_query, params)
-            total = cur.fetchone()[0]
-
-            # Get products with pagination
-            sort_clause = SORT_MAP.get(sort_by, 'created_at DESC')
-            query += f" ORDER BY {sort_clause} LIMIT ? OFFSET ?"
-            params.extend([per_page, (page-1)*per_page])
-            cur.execute(query, params)
-            products = cur.fetchall()
-
-        # Get distinct categories for filter
-        categories = get_categories()
-        total_pages = (total + per_page - 1) // per_page
-
-        return render_template('shop/index.html',
-                               products=products,
-                               page=page,
-                               per_page=per_page,
-                               total=total,
-                               total_pages=total_pages,
-                               search_query=search_query,
-                               category=category,
-                               categories=categories,
-                               stock_filter=stock_filter,
-                               sort_by=sort_by,
-                               min_price=min_price,
-                               max_price=max_price)
+            cur.execute("SELECT COUNT(*) FROM products")
+            context['store_total'] = cur.fetchone()[0]
     except Exception as e:
-        flash(f"Error loading products: {str(e)}", 'danger')
-        return render_template('shop/index.html', products=[], page=1, total=0, total_pages=0, categories=[])
+        flash(_('Error loading products: {error}', error=str(e)), 'danger')
+
+    # The shop page's JavaScript fetches only the results block when filters change
+    if is_ajax():
+        return render_template('shop/_results.html', **context)
+    return render_template('shop/index.html', **context)
 
 
 @bp.route('/search')
@@ -122,12 +160,42 @@ def product_detail(product_id):
             cur.execute("SELECT * FROM products WHERE product_id = ?", (product_id,))
             product = cur.fetchone()
 
-        if not product:
-            flash('Product not found', 'danger')
-            return redirect(url_for('main.home'))
+            if not product:
+                flash(_('Product not found'), 'danger')
+                return redirect(url_for('main.home'))
 
-        return render_template('shop/product.html', product=product)
+            # Suggest products from the same category first, then the newest others
+            cur.execute("""
+                SELECT * FROM products WHERE product_id != ?
+                ORDER BY (category = ?) DESC, stock_quantity > 0 DESC, created_at DESC
+                LIMIT 4
+            """, (product_id, product['category']))
+            related = cur.fetchall()
+
+        return render_template('shop/product.html', product=product, related=related)
 
     except Exception as e:
-        flash(f"Error loading product: {str(e)}", 'danger')
+        flash(_('Error loading product: {error}', error=str(e)), 'danger')
         return redirect(url_for('main.home'))
+
+
+@bp.route('/language/<code>')
+def set_language(code):
+    """Switch language, then go back to the page the user was on"""
+    if code in LANGUAGES:
+        session['lang'] = code
+    target = request.referrer
+    if not is_safe_redirect(target):
+        target = url_for('main.home')
+    return redirect(target)
+
+
+@bp.route('/i18n/<code>.js')
+def translations_js(code):
+    """Translations for the JavaScript t() function; cached by the browser (the URL has a version)"""
+    catalog = catalogs.get(code, {}) if code in LANGUAGES else {}
+    body = f"window.I18N = {json.dumps(catalog, ensure_ascii=False)};\n"
+    response = current_app.response_class(body, mimetype='application/javascript')
+    response.cache_control.public = True
+    response.cache_control.max_age = 60 * 60 * 24 * 365
+    return response

@@ -55,8 +55,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td colspan="7">
                             <div class="empty-state">
                                 <i class="fas fa-search"></i>
-                                <h3>No Orders Match Your Filters</h3>
-                                <p>Try adjusting your filter criteria</p>
+                                <h3>${escapeHtml(t('No Orders Match Your Filters'))}</h3>
+                                <p>${escapeHtml(t('Try adjusting your filter criteria'))}</p>
                             </div>
                         </td>
                     </tr>
@@ -74,8 +74,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Order management functions
     window.updateOrderStatus = function(orderId, status) {
-        const statusText = status.charAt(0).toUpperCase() + status.slice(1);
-        if (confirm(`Are you sure you want to update order #${orderId} to "${statusText}"?`)) {
+        const statusText = t(status.charAt(0).toUpperCase() + status.slice(1));
+        if (confirm(t('Are you sure you want to update order #{id} to "{status}"?', { id: orderId, status: statusText }))) {
             fetch(`/admin/update_order/${orderId}`, {
                 method: 'POST',
                 headers: {
@@ -87,15 +87,15 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(`Order #${orderId} status updated to ${status}`);
+                    alert(t('Order #{id} status updated to {status}', { id: orderId, status: statusText }));
                     location.reload();
                 } else {
-                    alert('Error updating order status');
+                    alert(t('Error updating order status'));
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Error updating order status');
+                alert(t('Error updating order status'));
             });
         }
     };

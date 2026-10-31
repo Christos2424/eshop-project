@@ -1,91 +1,105 @@
 {% extends "base.html" %}
 
-{% block title %}Add Product - eShop{% endblock %}
+{% block title %}{{ _('Add Product') }} - eShop{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1><i class="fas fa-plus-circle"></i> Add New Product</h1>
-    <p>Add a new product to your store</p>
+    <h1><i class="fas fa-plus-circle"></i> {{ _('Add New Product') }}</h1>
+    <p>{{ _('Add a new product to your store') }}</p>
 </div>
 
 <div class="form-container">
     <form method="POST" action="{{ url_for('admin.add_product') }}" class="product-form" enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-section">
-            <h3><i class="fas fa-info-circle"></i> Basic Information</h3>
-            
+            <h3><i class="fas fa-info-circle"></i> {{ _('Basic Information') }}</h3>
+
             <div class="form-group">
-                <label for="name">Product Name *</label>
+                <label for="name">{{ _('Product Name') }} *</label>
                 <input type="text" id="name" name="name" required class="form-control">
             </div>
-            
+
             <div class="form-group">
-                <label for="description">Description *</label>
-                <textarea id="description" name="description" rows="4" required class="form-control" placeholder="Enter product description..."></textarea>
+                <label for="description">{{ _('Description') }} *</label>
+                <textarea id="description" name="description" rows="4" required class="form-control" placeholder="{{ _('Enter product description...') }}"></textarea>
             </div>
-            
+
             <div class="form-row">
                 <div class="form-group">
-                    <label for="price">Price ($) *</label>
+                    <label for="price">{{ _('Price ($)') }} *</label>
                     <input type="number" id="price" name="price" step="0.01" min="0" required class="form-control">
                 </div>
-                
+
                 <div class="form-group">
-                    <label for="stock">Stock Quantity *</label>
-                    <!-- CHANGED: min="0" instead of min="1" -->
+                    <label for="stock">{{ _('Stock Quantity') }} *</label>
                     <input type="number" id="stock" name="stock" min="0" required class="form-control">
                 </div>
             </div>
-            
+
             <div class="form-group">
-                <label for="category">Category</label>
-                <input type="text" id="category" name="category" class="form-control" placeholder="e.g., Electronics, Clothing">
+                <label for="category">{{ _('Category') }}</label>
+                <input type="text" id="category" name="category" class="form-control" list="categoryOptions"
+                       placeholder="{{ _('e.g., Electronics, Books') }}">
+                {% include 'admin/_category_options.html' %}
             </div>
         </div>
 
         <div class="form-section">
-            <h3><i class="fas fa-image"></i> Product Image</h3>
-            <p class="form-help">Choose one method to add a product image:</p>
-            
+            <h3><i class="fas fa-language"></i> {{ _('Greek translation') }} <span class="optional-tag">{{ _('optional') }}</span></h3>
+            <p class="form-text">{{ _('Shown when visitors switch the site to Greek. Leave empty to use the English text.') }}</p>
+
+            <div class="form-group">
+                <label for="name_el">{{ _('Product Name (Greek)') }}</label>
+                <input type="text" id="name_el" name="name_el" class="form-control" lang="el">
+            </div>
+
+            <div class="form-group">
+                <label for="description_el">{{ _('Description (Greek)') }}</label>
+                <textarea id="description_el" name="description_el" rows="4" class="form-control" lang="el"></textarea>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3><i class="fas fa-image"></i> {{ _('Product Image') }}</h3>
+            <p class="form-help">{{ _('Choose one method to add a product image:') }}</p>
+
             <div class="image-upload-options">
                 <div class="upload-option">
-                    <h4><i class="fas fa-upload"></i> Upload Image</h4>
+                    <h4><i class="fas fa-upload"></i> {{ _('Upload Image') }}</h4>
                     <div class="form-group">
-                        <label for="image_file">Choose Image File</label>
+                        <label for="image_file">{{ _('Choose Image File') }}</label>
                         <input type="file" id="image_file" name="image_file" accept="image/*" class="form-control">
-                        <small class="form-text">Supported formats: PNG, JPG, JPEG, GIF, WEBP (Max 16MB)</small>
+                        <small class="form-text">{{ _('Supported formats: PNG, JPG, JPEG, GIF, WEBP (Max 16MB)') }}</small>
                     </div>
                 </div>
-                
+
                 <div class="option-divider">
-                    <span>OR</span>
+                    <span>{{ _('OR') }}</span>
                 </div>
-                
+
                 <div class="upload-option">
-                    <h4><i class="fas fa-link"></i> Image URL</h4>
+                    <h4><i class="fas fa-link"></i> {{ _('Image URL') }}</h4>
                     <div class="form-group">
-                        <label for="image_url">Image URL</label>
+                        <label for="image_url">{{ _('Image URL') }}</label>
                         <input type="url" id="image_url" name="image_url" class="form-control" placeholder="https://example.com/image.jpg">
-                        <small class="form-text">Enter a direct link to the product image</small>
+                        <small class="form-text">{{ _('Enter a direct link to the product image') }}</small>
                     </div>
                 </div>
             </div>
-            
+
             <div class="form-help">
-                <p><strong>Note:</strong> If you use both methods, the uploaded file will be prioritized.</p>
+                <p>{{ _('<strong>Note:</strong> If you use both methods, the uploaded file will be prioritized.') }}</p>
             </div>
         </div>
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary btn-lg">
-                <i class="fas fa-plus"></i> Add Product
+                <i class="fas fa-plus"></i> {{ _('Add Product') }}
             </button>
             <a href="{{ url_for('admin.products') }}" class="btn btn-secondary">
-                <i class="fas fa-times"></i> Cancel
+                <i class="fas fa-times"></i> {{ _('Cancel') }}
             </a>
         </div>
     </form>
 </div>
-
-
 {% endblock %}

@@ -1,0 +1,61 @@
+{# Import with context so the macros can use image_src, csrf_token and the translation helpers #}
+
+{% macro product_image(product, class='') %}
+    {% set name = product|localized('name') %}
+    {% if product.image_url %}
+        <img src="{{ image_src(product.image_url) }}" alt="{{ name }}" class="{{ class }}" loading="lazy" data-fallback="icon">
+    {% else %}
+        {# No photo: an icon and colour for the product's category #}
+        {% set art = placeholder_art(product.category) %}
+        <div class="img-placeholder {{ class }}" role="img" aria-label="{{ name }}" style="--hue: {{ art.hue }}">
+            <i class="fas {{ art.icon }}"></i>
+        </div>
+    {% endif %}
+{% endmacro %}
+
+{% macro product_card(product, index=0) %}
+{% set url = url_for('main.product_detail', product_id=product.product_id) %}
+{% set name = product|localized('name') %}
+{% set description = product|localized('description') %}
+<article class="product-card{{ ' is-sold-out' if product.stock_quantity == 0 }}" data-product-id="{{ product.product_id }}" style="--i: {{ index }}">
+    <div class="card-media">
+        {{ product_image(product, 'card-image') }}
+        <div class="card-badges">
+            {% if product.stock_quantity == 0 %}
+                <span class="badge badge-dark">{{ _('Sold out') }}</span>
+            {% elif product.stock_quantity < 10 %}
+                <span class="badge badge-warning">{{ _('Only {n} left', n=product.stock_quantity) }}</span>
+            {% endif %}
+        </div>
+        <button type="button" class="wishlist-btn" data-wishlist-toggle data-product-id="{{ product.product_id }}"
+                aria-label="{{ _('Save {name} for later', name=name) }}" aria-pressed="false">
+            <i class="far fa-heart"></i>
+        </button>
+    </div>
+
+    <div class="card-body">
+        <span class="card-category">{{ category_label(product.category) }}</span>
+        <h3 class="card-title"><a href="{{ url }}">{{ name }}</a></h3>
+        {% if description %}
+        <p class="card-desc">{{ description|truncate(80) }}</p>
+        {% endif %}
+
+        <div class="card-footer">
+            <span class="card-price">{{ product.price|currency }}</span>
+            {% if product.stock_quantity > 0 %}
+            <form action="{{ url_for('cart.add_to_cart') }}" method="post" class="add-to-cart-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="product_id" value="{{ product.product_id }}">
+                <input type="hidden" name="quantity" value="1">
+                <button type="submit" class="btn btn-primary btn-sm card-add-btn" aria-label="{{ _('Add {name} to cart', name=name) }}">
+                    <i class="fas fa-cart-plus"></i>
+                    <span>{{ _('Add') }}</span>
+                </button>
+            </form>
+            {% else %}
+            <span class="card-sold-out">{{ _('Out of stock') }}</span>
+            {% endif %}
+        </div>
+    </div>
+</article>
+{% endmacro %}

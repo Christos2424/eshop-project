@@ -1,104 +1,121 @@
 {% extends "base.html" %}
 
-{% block title %}Home - eShop{% endblock %}
+{% block title %}{{ _('Home') }} - eShop{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1><i class="fas fa-store"></i> Welcome to eShop</h1>
-    <p>Discover amazing products at great prices</p>
-</div>
+<section class="hero">
+    <div class="hero-content">
+        <span class="hero-eyebrow"><i class="fas fa-bolt"></i> {{ _('Fresh picks, every day') }}</span>
+        <h1>{{ _('Find something<br>you\'ll love.') }}</h1>
+        <p>
+            {{ ngettext('Browse {n} product', 'Browse {n} products', store_total) }}
+            {{ ngettext('across {n} category', 'across {n} categories', global_categories|length) }},
+            {{ _('with free shipping on orders over ${amount}.', amount=config.FREE_SHIPPING_THRESHOLD) }}
+        </p>
+        <div class="hero-actions">
+            <a href="#shop" class="btn btn-light btn-lg" data-scroll-to="shop">
+                {{ _('Start shopping') }} <i class="fas fa-arrow-down"></i>
+            </a>
+            <button type="button" class="btn btn-ghost-light btn-lg" data-open-categories>
+                <i class="fas fa-th-large"></i> {{ _('Browse categories') }}
+            </button>
+        </div>
+    </div>
+    <ul class="hero-perks">
+        <li>
+            <span class="perk-icon"><i class="fas fa-shipping-fast"></i></span>
+            <div><strong>{{ _('Free shipping') }}</strong><span>{{ _('On orders over ${amount}', amount=config.FREE_SHIPPING_THRESHOLD) }}</span></div>
+        </li>
+        <li>
+            <span class="perk-icon"><i class="fas fa-undo"></i></span>
+            <div><strong>{{ _('30-day returns') }}</strong><span>{{ _('Changed your mind? No problem') }}</span></div>
+        </li>
+        <li>
+            <span class="perk-icon"><i class="fas fa-shield-alt"></i></span>
+            <div><strong>{{ _('2-year warranty') }}</strong><span>{{ _('Included with every product') }}</span></div>
+        </li>
+    </ul>
+</section>
 
-<!-- Products Grid -->
-{% if products %}
-    <div class="products-grid">
-        {% for product in products %}
-            <div class="product-card {{ 'out-of-stock' if product.stock_quantity == 0 }}">
-                {% if product.stock_quantity == 0 %}
-                <div class="out-of-stock-overlay">
-                    <i class="fas fa-times-circle"></i> Out of Stock
-                </div>
-                {% endif %}
-                
-                <!-- Clickable product content -->
-                <a href="{{ url_for('main.product_detail', product_id=product.product_id) }}" class="product-content-link">
-                    <div class="product-image">
-                        <img src="{{ get_image_url(product.image_url) }}" alt="{{ product.name }}">
-                    </div>
-                    <div class="product-info">
-                        <h3>{{ product.name }}</h3>
-                        <p class="price">${{ "%.2f"|format(product.price) }}</p>
-                        <p class="product-description">
-                            {{ product.description|truncate(100) }}
-                        </p>
-                        
-                        <!-- Stock Status -->
-                        <div class="stock-info">
-                            {% if product.stock_quantity == 0 %}
-                                <span class="stock-out">
-                                    <i class="fas fa-times-circle"></i> Out of Stock
-                                </span>
-                            {% elif product.stock_quantity < 10 %}
-                                <span class="stock-low">
-                                    <i class="fas fa-exclamation-triangle"></i> Only {{ product.stock_quantity }} left!
-                                </span>
-                            {% endif %}
-                        </div>
-                    </div>
-                </a>
-                
-                <!-- Add to Cart Button -->
-                <div class="product-actions">
-                    {% if product.stock_quantity > 0 %}
-                    <form action="{{ url_for('cart.add_to_cart') }}" method="post" class="add-to-cart-form">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="hidden" name="product_id" value="{{ product.product_id }}">
-                        <input type="hidden" name="quantity" value="1">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-cart-plus"></i> Add to Cart
-                        </button>
-                    </form>
-                    {% else %}
-                    <form class="add-to-cart-form">
-                        <button class="btn btn-secondary" disabled type="button">
-                            <i class="fas fa-cart-plus"></i> Out of Stock
-                        </button>
-                    </form>
-                    {% endif %}
-                </div>
-            </div>
+<section class="shop-section" id="shop">
+    <!-- Category chips: shop.js loads these without a page reload -->
+    <nav class="category-chips" id="categoryChips" aria-label="{{ _('Categories') }}">
+        <a href="{{ url_for('main.home') }}" class="chip {{ 'active' if not filters.category }}" data-shop-link data-category="">
+            {{ _('All') }}
+        </a>
+        {% for category in global_categories %}
+        {% set art = placeholder_art(category.name) %}
+        <a href="{{ url_for('main.home', category=category.name) }}"
+           class="chip {{ 'active' if filters.category == category.name }}"
+           data-shop-link data-category="{{ category.name }}">
+            <i class="fas {{ art.icon }} chip-icon" style="--hue: {{ art.hue }}"></i>
+            {{ category_label(category.name) }} <span class="chip-count">{{ category.count }}</span>
+        </a>
         {% endfor %}
-    </div>
+    </nav>
 
-    <!-- Pagination -->
-    {% if total_pages > 1 %}
-    <div class="pagination">
-        {% if page > 1 %}
-        <a href="{{ url_for('main.home', page=page-1, q=search_query, category=category, stock=stock_filter, sort=sort_by, min_price=min_price, max_price=max_price) }}" class="btn btn-outline">
-            <i class="fas fa-chevron-left"></i> Previous
-        </a>
-        {% endif %}
-        
-        <span class="pagination-info">
-            Page {{ page }} of {{ total_pages }} ({{ total }} products)
-        </span>
-        
-        {% if page < total_pages %}
-        <a href="{{ url_for('main.home', page=page+1, q=search_query, category=category, stock=stock_filter, sort=sort_by, min_price=min_price, max_price=max_price) }}" class="btn btn-outline">
-            Next <i class="fas fa-chevron-right"></i>
-        </a>
-        {% endif %}
+    <!-- Filters apply instantly with JavaScript; the Apply button is the no-JS fallback -->
+    <form class="shop-toolbar" id="shopFilters" method="get" action="{{ url_for('main.home') }}">
+        <input type="hidden" name="q" value="{{ filters.q }}">
+        <input type="hidden" name="category" value="{{ filters.category }}">
+
+        <label class="toolbar-field">
+            <span class="toolbar-label"><i class="fas fa-box"></i> {{ _('Availability') }}</span>
+            <select name="stock" class="toolbar-select">
+                <option value="all" {{ 'selected' if filters.stock == 'all' }}>{{ _('All products') }}</option>
+                <option value="in_stock" {{ 'selected' if filters.stock == 'in_stock' }}>{{ _('In stock') }}</option>
+                <option value="out_of_stock" {{ 'selected' if filters.stock == 'out_of_stock' }}>{{ _('Out of stock') }}</option>
+            </select>
+        </label>
+
+        <div class="toolbar-field">
+            <span class="toolbar-label"><i class="fas fa-dollar-sign"></i> {{ _('Price') }}</span>
+            <div class="price-inputs">
+                <input type="number" name="min_price" class="toolbar-input" placeholder="{{ _('Min') }}" min="0" step="any"
+                       value="{{ filters.min_price }}" aria-label="{{ _('Minimum price') }}">
+                <span class="price-sep">–</span>
+                <input type="number" name="max_price" class="toolbar-input" placeholder="{{ _('Max') }}" min="0" step="any"
+                       value="{{ filters.max_price }}" aria-label="{{ _('Maximum price') }}">
+            </div>
+        </div>
+
+        <label class="toolbar-field toolbar-sort">
+            <span class="toolbar-label"><i class="fas fa-sort-amount-down"></i> {{ _('Sort by') }}</span>
+            <select name="sort" class="toolbar-select">
+                <option value="newest" {{ 'selected' if filters.sort == 'newest' }}>{{ _('Newest') }}</option>
+                <option value="price_low" {{ 'selected' if filters.sort == 'price_low' }}>{{ _('Price: low to high') }}</option>
+                <option value="price_high" {{ 'selected' if filters.sort == 'price_high' }}>{{ _('Price: high to low') }}</option>
+                <option value="name_az" {{ 'selected' if filters.sort == 'name_az' }}>{{ _('Name: A to Z') }}</option>
+                <option value="name_za" {{ 'selected' if filters.sort == 'name_za' }}>{{ _('Name: Z to A') }}</option>
+                <option value="oldest" {{ 'selected' if filters.sort == 'oldest' }}>{{ _('Oldest') }}</option>
+            </select>
+        </label>
+
+        <button type="submit" class="btn btn-primary btn-sm toolbar-apply">{{ _('Apply') }}</button>
+    </form>
+
+    <div class="shop-results" id="shopResults" aria-live="polite">
+        {% include 'shop/_results.html' %}
     </div>
-    {% endif %}
-{% else %}
-    <div class="empty-state">
-        <i class="fas fa-search"></i>
-        <h3>No Products Found</h3>
-        <p>{% if search_query %}No products match your search "{{ search_query }}"{% else %}No products available at the moment.{% endif %}</p>
-        {% if search_query or category or request.args.get('stock') %}
-        <a href="{{ url_for('main.home') }}" class="btn btn-primary">
-            <i class="fas fa-undo"></i> View All Products
-        </a>
-        {% endif %}
+</section>
+
+<!-- Filled from localStorage by shop.js; hidden until there is something to show -->
+<section class="product-strip" id="savedStrip" hidden>
+    <div class="strip-header">
+        <h2><i class="fas fa-heart"></i> {{ _('Saved items') }}</h2>
     </div>
-{% endif %}
+    <div class="strip-track" data-strip-track></div>
+</section>
+
+<section class="product-strip" id="recentStrip" hidden>
+    <div class="strip-header">
+        <h2><i class="fas fa-history"></i> {{ _('Recently viewed') }}</h2>
+        <button type="button" class="link-btn" data-clear-recent>{{ _('Clear') }}</button>
+    </div>
+    <div class="strip-track" data-strip-track></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/shop.js') }}"></script>
 {% endblock %}

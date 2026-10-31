@@ -107,7 +107,7 @@
     margin-bottom: 40px;
 }
 
-.section-title {
+.table-section .section-title {
     font-size: 1.5rem;
     font-weight: 600;
     color: #2d3748;
@@ -251,20 +251,20 @@
     min-width: 250px;
 }
 
-.product-info {
+.data-table .product-info {
     display: flex;
     flex-direction: column;
     gap: 6px;
 }
 
-.product-name {
+.data-table .product-name {
     font-weight: 600;
     color: #1a202c;
     font-size: 1rem;
     line-height: 1.4;
 }
 
-.product-description {
+.data-table .product-description {
     color: #718096;
     font-size: 0.85rem;
     line-height: 1.4;
@@ -274,7 +274,7 @@
     width: 120px;
 }
 
-.price {
+.data-table .price {
     font-weight: 700;
     color: #059669;
     font-size: 1.1rem;
@@ -284,23 +284,23 @@
     width: 140px;
 }
 
-.stock-info {
+.data-table .stock-info {
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-.stock-quantity {
+.data-table .stock-quantity {
     font-weight: 700;
     font-size: 1.1rem;
     color: #059669;
 }
 
-.stock-quantity.low-stock {
+.data-table .stock-quantity.low-stock {
     color: #f59e0b;
 }
 
-.stock-quantity.out-of-stock {
+.data-table .stock-quantity.out-of-stock {
     color: #ef4444;
 }
 
@@ -345,7 +345,7 @@
     width: 150px;
 }
 
-.action-buttons {
+.data-table .action-buttons {
     display: flex;
     gap: 6px;
     justify-content: flex-start;
@@ -395,24 +395,24 @@
     padding: 60px 20px;
 }
 
-.empty-state {
+.data-table .empty-state {
     text-align: center;
     color: #718096;
 }
 
-.empty-state i {
+.data-table .empty-state i {
     font-size: 4rem;
     margin-bottom: 20px;
     color: #cbd5e0;
 }
 
-.empty-state h3 {
+.data-table .empty-state h3 {
     margin: 0 0 12px 0;
     color: #4a5568;
     font-size: 1.5rem;
 }
 
-.empty-state p {
+.data-table .empty-state p {
     margin: 0 0 24px 0;
     font-size: 1rem;
 }
@@ -734,7 +734,7 @@
         font-size: 1.5rem;
     }
     
-    .section-title {
+    .table-section .section-title {
         font-size: 1.25rem;
     }
     
@@ -813,7 +813,7 @@
         padding: 20px;
     }
     
-    .action-buttons {
+    .data-table .action-buttons {
         flex-direction: column;
         gap: 4px;
     }

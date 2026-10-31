@@ -1,0 +1,32 @@
+<!-- Cart drawer: filled from /cart/data by base.js -->
+<div class="drawer-overlay" id="cartDrawerOverlay"></div>
+<aside class="cart-drawer" id="cartDrawer" role="dialog" aria-modal="true" aria-labelledby="cartDrawerTitle" aria-hidden="true" tabindex="-1">
+    <div class="drawer-header">
+        <h2 id="cartDrawerTitle">
+            {{ _('Your cart') }} <span class="drawer-count" data-cart-count-text></span>
+        </h2>
+        <button type="button" class="icon-btn" data-close-drawer aria-label="{{ _('Close cart') }}">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <div class="drawer-body" id="cartDrawerBody"></div>
+
+    <div class="drawer-footer" id="cartDrawerFooter" hidden>
+        <div class="shipping-progress" data-shipping-progress>
+            <p class="shipping-progress-text" data-shipping-text></p>
+            <div class="progress-track"><div class="progress-fill" data-shipping-fill></div></div>
+        </div>
+        <div class="drawer-subtotal">
+            <span>{{ _('Subtotal') }}</span>
+            <strong data-cart-field="subtotal"></strong>
+        </div>
+        <p class="drawer-note">{{ _('Shipping and taxes are calculated at checkout.') }}</p>
+        <div class="drawer-actions">
+            <a href="{{ url_for('cart.view_cart') }}" class="btn btn-outline">{{ _('View cart') }}</a>
+            <a href="{{ url_for('cart.checkout') }}" class="btn btn-primary">
+                {{ _('Checkout') }} <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+</aside>

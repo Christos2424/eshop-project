@@ -1,32 +1,55 @@
 <footer class="main-footer">
     <div class="container">
         <div class="footer-content">
-            <div class="footer-section">
-                <h3><i class="fas fa-store"></i> eShop</h3>
-                <p>Your trusted online shopping destination for quality products at great prices.</p>
+            <div class="footer-section footer-brand">
+                <a href="{{ url_for('main.home') }}" class="logo logo-light">
+                    <span class="logo-mark"><i class="fas fa-store"></i></span>
+                    <span class="logo-text">eShop</span>
+                </a>
+                <p>{{ _('Your trusted online shopping destination for quality products at great prices.') }}</p>
+                <div class="footer-perks">
+                    <span><i class="fas fa-shipping-fast"></i> {{ _('Free shipping over ${amount}', amount=config.FREE_SHIPPING_THRESHOLD) }}</span>
+                    <span><i class="fas fa-undo"></i> {{ _('30-day returns') }}</span>
+                </div>
             </div>
             <div class="footer-section">
-                <h4>Quick Links</h4>
-                <a href="{{ url_for('main.home') }}">Home</a>
-                <a href="{{ url_for('cart.view_cart') }}">Shopping Cart</a>
+                <h4>{{ _('Shop') }}</h4>
+                <a href="{{ url_for('main.home') }}">{{ _('All products') }}</a>
+                {% for category in global_categories[:5] %}
+                <a href="{{ url_for('main.home', category=category.name) }}">{{ category_label(category.name) }}</a>
+                {% endfor %}
+            </div>
+            <div class="footer-section">
+                <h4>{{ _('Account') }}</h4>
+                <a href="{{ url_for('cart.view_cart') }}">{{ _('Shopping Cart') }}</a>
                 {% if session.user_id %}
-                    {% if session.role != 'admin' %}
-                    <a href="{{ url_for('orders.user_orders') }}">My Orders</a>
-                    {% endif %}
-                <a href="{{ url_for('auth.logout') }}">Logout</a>
+                    <a href="{{ url_for('orders.user_orders') }}">{{ _('All Orders') if session.role == 'admin' else _('My Orders') }}</a>
+                    <a href="{{ url_for('auth.logout') }}">{{ _('Logout') }}</a>
                 {% else %}
-                <a href="{{ url_for('auth.login') }}">Login</a>
-                <a href="{{ url_for('auth.register') }}">Register</a>
+                    <a href="{{ url_for('auth.login') }}">{{ _('Login') }}</a>
+                    <a href="{{ url_for('auth.register') }}">{{ _('Register') }}</a>
                 {% endif %}
             </div>
             <div class="footer-section">
-                <h4>Contact Info</h4>
+                <h4>{{ _('Contact') }}</h4>
                 <p><i class="fas fa-envelope"></i> support@eshop.com</p>
                 <p><i class="fas fa-phone"></i> +1 (555) 123-4567</p>
+                <div class="footer-languages">
+                    {% for code, label in LANGUAGES.items() %}
+                    <a href="{{ url_for('main.set_language', code=code) }}" lang="{{ code }}"
+                       class="{{ 'active' if code == current_language }}">{{ label }}</a>
+                    {% endfor %}
+                </div>
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2025 eShop. All rights reserved.</p>
+            <p>&copy; 2025 eShop. {{ _('All rights reserved.') }}</p>
+            <div class="payment-icons" aria-label="{{ _('Accepted payment methods') }}">
+                <i class="fab fa-cc-visa"></i>
+                <i class="fab fa-cc-mastercard"></i>
+                <i class="fab fa-cc-paypal"></i>
+                <i class="fab fa-cc-apple-pay"></i>
+            </div>
         </div>
     </div>
 </footer>

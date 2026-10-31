@@ -64,8 +64,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td colspan="7">
                             <div class="empty-state">
                                 <i class="fas fa-search"></i>
-                                <h3>No Products Match Your Filters</h3>
-                                <p>Try adjusting your filter criteria</p>
+                                <h3>${escapeHtml(t('No Products Match Your Filters'))}</h3>
+                                <p>${escapeHtml(t('Try adjusting your filter criteria'))}</p>
                             </div>
                         </td>
                     </tr>

@@ -1,13 +1,11 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app
 
 from ..db import get_db, get_cursor
+from ..i18n import gettext as _, localized
 from ..security import login_required
+from ..utils import is_ajax, product_to_dict
 
 bp = Blueprint('cart', __name__)
-
-
-def is_ajax():
-    return request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
 
 def load_cart_items(cart):
@@ -22,12 +20,16 @@ def load_cart_items(cart):
             f"SELECT * FROM products WHERE product_id IN ({placeholders})",
             product_ids
         )
-        products = cur.fetchall()
+        products = {str(product["product_id"]): product for product in cur.fetchall()}
 
+    # Stable order by product id (the session doesn't keep the order items were added in)
     cart_items = []
     total = 0
-    for product in products:
-        qty = cart[str(product["product_id"])]
+    for pid in sorted(product_ids, key=int):
+        if pid not in products:
+            continue
+        product = products[pid]
+        qty = cart[pid]
         item_total = product["price"] * qty
         cart_items.append({
             "product": product,
@@ -36,15 +38,73 @@ def load_cart_items(cart):
         })
         total += item_total
 
-    found_ids = {str(product["product_id"]) for product in products}
-    missing_ids = [pid for pid in product_ids if pid not in found_ids]
+    missing_ids = [pid for pid in product_ids if pid not in products]
     return cart_items, total, missing_ids
+
+
+def get_cart_items():
+    """Load the session cart, dropping products that no longer exist.
+
+    Returns (cart_items, subtotal, removed) where removed is True if anything was dropped.
+    """
+    cart = session.get('cart', {})
+    cart_items, subtotal, missing_ids = load_cart_items(cart)
+
+    if missing_ids:
+        for pid in missing_ids:
+            del cart[pid]
+        session["cart"] = cart
+        session.modified = True
+
+    return cart_items, subtotal, bool(missing_ids)
+
+
+def cart_totals(subtotal):
+    """Shipping, tax and grand total for a cart subtotal"""
+    config = current_app.config
+    threshold = config['FREE_SHIPPING_THRESHOLD']
+    shipping = 0 if subtotal == 0 or subtotal >= threshold else config['SHIPPING_FEE']
+    tax = round(subtotal * config['TAX_RATE'], 2)
+    return {
+        'subtotal': round(subtotal, 2),
+        'shipping': shipping,
+        'tax': tax,
+        'total': round(subtotal + shipping + tax, 2),
+        'free_shipping_threshold': threshold,
+        'free_shipping_remaining': round(max(threshold - subtotal, 0), 2),
+    }
+
+
+def cart_payload():
+    """The whole cart as JSON for the cart drawer and the cart page's JavaScript"""
+    cart_items, subtotal, _removed = get_cart_items()
+    items = [
+        {**product_to_dict(item['product']), 'quantity': item['quantity'], 'line_total': round(item['total'], 2)}
+        for item in cart_items
+    ]
+    return {'count': sum(item['quantity'] for item in items), 'items': items, **cart_totals(subtotal)}
+
+
+def cart_response(success, message, category=None, redirect_to=None):
+    """JSON with the updated cart for AJAX requests, otherwise flash and redirect"""
+    if is_ajax():
+        return jsonify({'success': success, 'message': message, 'cart': cart_payload()})
+    flash(message, category or ('success' if success else 'danger'))
+    return redirect(redirect_to or url_for('cart.view_cart'))
+
+
+def save_cart(cart):
+    session['cart'] = cart
+    session.modified = True
 
 
 @bp.route('/add_to_cart', methods=['POST'])
 def add_to_cart():
     product_id = request.form.get('product_id')
-    quantity = int(request.form.get('quantity', 1))
+    try:
+        quantity = int(request.form.get('quantity', 1))
+    except ValueError:
+        quantity = 0
 
     def fail(message, flash_message=None, category='danger'):
         if is_ajax():
@@ -53,137 +113,132 @@ def add_to_cart():
         return redirect(request.referrer or url_for('main.home'))
 
     if not product_id:
-        return fail('Invalid product')
+        return fail(_('Invalid product'))
+
+    if quantity < 1:
+        return fail(_('Invalid quantity'))
 
     try:
         # Validate product exists
         with get_cursor() as cur:
-            cur.execute("SELECT product_id, name, stock_quantity FROM products WHERE product_id = ?", (product_id,))
+            cur.execute("SELECT product_id, name, name_el, stock_quantity FROM products WHERE product_id = ?", (product_id,))
             product = cur.fetchone()
 
         if not product:
-            return fail('Product not found')
+            return fail(_('Product not found'))
 
-        if product['stock_quantity'] == 0:
-            return fail(f"{product['name']} is out of stock",
-                        f"{product['name']} is currently out of stock", 'warning')
+        name = localized(product, 'name')
+        stock = product['stock_quantity']
+        if stock == 0:
+            return fail(_('{name} is out of stock', name=name),
+                        _('{name} is currently out of stock', name=name), 'warning')
 
         # Check if requested quantity exceeds available stock
-        if product['stock_quantity'] < quantity:
-            return fail(f"Only {product['stock_quantity']} units available",
-                        f"Only {product['stock_quantity']} units of {product['name']} available", 'warning')
+        if stock < quantity:
+            return fail(_('Only {n} units available', n=stock),
+                        _('Only {n} units of {name} available', n=stock, name=name), 'warning')
 
         # Update cart
         cart = session.get('cart', {})
         new_quantity = cart.get(str(product_id), 0) + quantity
 
         # Final check to ensure we don't exceed stock
-        if new_quantity > product['stock_quantity']:
-            return fail(f"Cannot add more than {product['stock_quantity']} units",
-                        f"Cannot add more than {product['stock_quantity']} units of {product['name']}", 'warning')
+        if new_quantity > stock:
+            return fail(_('Cannot add more than {n} units', n=stock),
+                        _('Cannot add more than {n} units of {name}', n=stock, name=name), 'warning')
 
         cart[str(product_id)] = new_quantity
-        session["cart"] = cart
-        session.modified = True
+        save_cart(cart)
 
         if is_ajax():
+            payload = cart_payload()
             return jsonify({
                 'success': True,
-                'message': f"{product['name']} added to cart!",
-                'cart_count': sum(cart.values())
+                'message': _('{name} added to cart!', name=name),
+                'cart_count': payload['count'],
+                'cart': payload
             })
 
-        flash("Item added to cart!", "success")
+        flash(_('Item added to cart!'), 'success')
         return redirect(request.referrer or url_for('main.home'))
 
     except Exception as e:
-        return fail(f"Error: {str(e)}", f"Error adding to cart: {str(e)}")
+        return fail(_('Error: {error}', error=str(e)), _('Error adding to cart: {error}', error=str(e)))
 
 
 @bp.route('/update_cart', methods=['POST'])
 def update_cart():
-    product_id = request.form.get('product_id')
-    quantity = request.form.get('quantity')
-
-    if not product_id or not quantity:
-        flash('Invalid request', 'danger')
-        return redirect(url_for('cart.view_cart'))
+    product_id = request.form.get('product_id', '')
+    cart = session.get('cart', {})
 
     try:
-        quantity = int(quantity)
-
-        if 'cart' in session and str(product_id) in session['cart']:
-            # Check if product is in stock before allowing quantity updates
-            with get_cursor() as cur:
-                cur.execute("SELECT stock_quantity FROM products WHERE product_id = ?", (product_id,))
-                product = cur.fetchone()
-
-            if product and product['stock_quantity'] == 0:
-                flash('This product is out of stock and cannot be added to cart', 'warning')
-                # Remove from cart if already there
-                del session['cart'][str(product_id)]
-                session.modified = True
-                return redirect(url_for('cart.view_cart'))
-
-            if product and quantity <= product['stock_quantity']:
-                if quantity <= 0:
-                    del session['cart'][str(product_id)]
-                    flash('Item removed from cart', 'success')
-                else:
-                    session['cart'][str(product_id)] = quantity
-                    flash('Cart updated successfully!', 'success')
-            else:
-                flash('Requested quantity not available', 'warning')
-
-            session.modified = True
-        else:
-            flash('Item not found in cart', 'warning')
-
+        quantity = int(request.form.get('quantity', ''))
     except ValueError:
-        flash('Invalid quantity', 'danger')
-    except Exception as e:
-        flash(f"Error updating cart: {str(e)}", 'danger')
+        return cart_response(False, _('Invalid quantity'))
 
-    return redirect(url_for('cart.view_cart'))
-
-
-@bp.route("/cart")
-def view_cart():
-    cart = session.get("cart")
-    if not cart:
-        return render_template("cart/cart.html", cart_items=[], total=0)
+    if product_id not in cart:
+        return cart_response(False, _('Item not found in cart'), 'warning')
 
     try:
-        cart_items, total, missing_ids = load_cart_items(cart)
+        with get_cursor() as cur:
+            cur.execute("SELECT stock_quantity FROM products WHERE product_id = ?", (product_id,))
+            product = cur.fetchone()
 
-        # Remove any products from cart that weren't found in database
-        if missing_ids:
-            for pid in missing_ids:
-                del cart[pid]
-            session["cart"] = cart
-            session.modified = True
-            flash("Some items in your cart are no longer available and have been removed.", "warning")
+        # Products that were deleted or sold out can't stay in the cart
+        if not product or product['stock_quantity'] == 0:
+            del cart[product_id]
+            save_cart(cart)
+            return cart_response(False, _('This product is out of stock and was removed from your cart'), 'warning')
 
-        return render_template("cart/cart.html", cart_items=cart_items, total=total)
+        if quantity > product['stock_quantity']:
+            return cart_response(False, _('Only {n} units available', n=product['stock_quantity']), 'warning')
+
+        if quantity <= 0:
+            del cart[product_id]
+            message = _('Item removed from cart')
+        else:
+            cart[product_id] = quantity
+            message = _('Cart updated successfully!')
+        save_cart(cart)
+        return cart_response(True, message)
 
     except Exception as e:
-        flash(f"Error loading cart: {str(e)}", "danger")
-        # If there's an error, clear the cart to prevent further issues
-        session.pop('cart', None)
-        return render_template("cart/cart.html", cart_items=[], total=0)
+        return cart_response(False, _('Error updating cart: {error}', error=str(e)))
 
 
 @bp.route('/remove_from_cart', methods=['POST'])
 def remove_from_cart():
-    if 'cart' in session and 'product_id' in request.form:
-        product_id = request.form['product_id']
-        cart = session['cart']
-        if str(product_id) in cart:
-            del cart[str(product_id)]
-            session['cart'] = cart
-            session.modified = True
-            flash('Item removed from cart', 'success')
-    return redirect(url_for('cart.view_cart'))
+    product_id = request.form.get('product_id', '')
+    cart = session.get('cart', {})
+
+    if product_id not in cart:
+        return cart_response(False, _('Item not found in cart'), 'warning')
+
+    del cart[product_id]
+    save_cart(cart)
+    return cart_response(True, _('Item removed from cart'))
+
+
+@bp.route('/cart/data')
+def cart_data():
+    """Current cart as JSON, loaded when the cart drawer opens"""
+    return jsonify(cart_payload())
+
+
+@bp.route("/cart")
+def view_cart():
+    try:
+        cart_items, subtotal, removed = get_cart_items()
+        if removed:
+            flash(_('Some items in your cart are no longer available and have been removed.'), 'warning')
+
+        return render_template("cart/cart.html", cart_items=cart_items, totals=cart_totals(subtotal))
+
+    except Exception as e:
+        flash(_('Error loading cart: {error}', error=str(e)), 'danger')
+        # If there's an error, clear the cart to prevent further issues
+        session.pop('cart', None)
+        return render_template("cart/cart.html", cart_items=[], totals=cart_totals(0))
 
 
 @bp.route("/checkout", methods=['GET', 'POST'])
@@ -191,13 +246,13 @@ def remove_from_cart():
 def checkout():
     cart = session.get("cart")
     if not cart:
-        flash("Your cart is empty", 'warning')
+        flash(_('Your cart is empty'), 'warning')
         return redirect(url_for("cart.view_cart"))
 
     if request.method == 'GET':
         # Show checkout page with totals
-        cart_items, total, _ = load_cart_items(cart)
-        return render_template('cart/checkout.html', cart_items=cart_items, total=total)
+        cart_items, subtotal, _removed = get_cart_items()
+        return render_template('cart/checkout.html', cart_items=cart_items, totals=cart_totals(subtotal))
 
     # POST request - process the actual checkout
     try:
@@ -212,7 +267,7 @@ def checkout():
             placeholders = ','.join(['?'] * len(product_ids))
 
             cur.execute(
-                f"SELECT product_id, price, stock_quantity, name FROM products WHERE product_id IN ({placeholders})",
+                f"SELECT product_id, price, stock_quantity, name, name_el FROM products WHERE product_id IN ({placeholders})",
                 product_ids
             )
             products = {str(row['product_id']): dict(row) for row in cur.fetchall()}
@@ -224,17 +279,17 @@ def checkout():
             for pid, qty in cart.items():
                 if pid not in products:
                     db.rollback()
-                    flash(f"Product ID {pid} no longer available", 'danger')
+                    flash(_('Product ID {id} no longer available', id=pid), 'danger')
                     return redirect(url_for('cart.view_cart'))
 
                 product = products[pid]
                 if product['stock_quantity'] < qty:
-                    insufficient_stock.append(f"{product['name']} (available: {product['stock_quantity']})")
+                    insufficient_stock.append(_('{name} (available: {n})', name=localized(product, 'name'), n=product['stock_quantity']))
                 total += product['price'] * qty
 
             if insufficient_stock:
                 db.rollback()
-                flash(f"Insufficient stock for: {', '.join(insufficient_stock)}", 'danger')
+                flash(_('Insufficient stock for: {items}', items=', '.join(insufficient_stock)), 'danger')
                 return redirect(url_for('cart.view_cart'))
 
             # Create order
@@ -264,7 +319,7 @@ def checkout():
             session.pop('cart', None)
             session.modified = True
 
-            flash(f'Order #{order_id} placed successfully!', 'success')
+            flash(_('Order #{id} placed successfully!', id=order_id), 'success')
             return redirect(url_for('orders.user_orders'))
 
         except Exception as e:
@@ -272,5 +327,5 @@ def checkout():
             raise e
 
     except Exception as e:
-        flash(f"Checkout failed: {str(e)}", 'danger')
+        flash(_('Checkout failed: {error}', error=str(e)), 'danger')
         return redirect(url_for('cart.view_cart'))

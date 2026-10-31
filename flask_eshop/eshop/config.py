@@ -17,3 +17,9 @@ class Config:
     WTF_CSRF_TIME_LIMIT = None
 
     PRODUCTS_PER_PAGE = 12
+    SEARCH_SUGGESTIONS = 6
+
+    # Cart pricing, shown in the cart and at checkout
+    FREE_SHIPPING_THRESHOLD = 50
+    SHIPPING_FEE = 9.99
+    TAX_RATE = 0.08
