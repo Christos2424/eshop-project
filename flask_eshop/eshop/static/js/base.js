@@ -48,10 +48,11 @@ function escapeHtml(value) {
 }
 
 function formatPrice(price) {
+    // Amount first, then the euro sign: 29.99 €
     return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'EUR'
-    }).format(price);
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(price) + ' €';
 }
 
 function debounce(func, wait) {
