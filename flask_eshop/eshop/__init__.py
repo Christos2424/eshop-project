@@ -88,7 +88,7 @@ def load_or_create_secret_key(instance_path):
 def register_template_helpers(app):
     @app.template_filter('currency')
     def currency(value):
-        return f"€{value or 0:,.2f}"
+        return f"{value or 0:,.2f} €"
 
     # Translations: {{ _('Text') }}, {{ ngettext('{n} item', '{n} items', n) }}, {{ product|localized('name') }}
     app.jinja_env.globals.update(

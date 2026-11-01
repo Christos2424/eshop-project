@@ -69,8 +69,8 @@ def filter_pills(filters):
         'q': lambda v: _('Search: {query}', query=v),
         'category': category_label,
         'stock': lambda v: _(STOCK_LABELS[v]) if v in STOCK_LABELS else None,
-        'min_price': lambda v: _('From €{price}', price=v),
-        'max_price': lambda v: _('Up to €{price}', price=v),
+        'min_price': lambda v: _('From {price} €', price=v),
+        'max_price': lambda v: _('Up to {price} €', price=v),
     }
     params = active_params(filters)
     pills = []

@@ -9,7 +9,7 @@
         <p>
             {{ ngettext('Browse {n} product', 'Browse {n} products', store_total) }}
             {{ ngettext('across {n} category', 'across {n} categories', global_categories|length) }},
-            {{ _('with free shipping on orders over €{amount}.', amount=config.FREE_SHIPPING_THRESHOLD) }}
+            {{ _('with free shipping on orders over {amount} €.', amount=config.FREE_SHIPPING_THRESHOLD) }}
         </p>
         <div class="hero-actions">
             <a href="#shop" class="btn btn-light btn-lg" data-scroll-to="shop">
@@ -23,7 +23,7 @@
     <ul class="hero-perks">
         <li>
             <span class="perk-icon"><i class="fas fa-shipping-fast"></i></span>
-            <div><strong>{{ _('Free shipping') }}</strong><span>{{ _('On orders over €{amount}', amount=config.FREE_SHIPPING_THRESHOLD) }}</span></div>
+            <div><strong>{{ _('Free shipping') }}</strong><span>{{ _('On orders over {amount} €', amount=config.FREE_SHIPPING_THRESHOLD) }}</span></div>
         </li>
         <li>
             <span class="perk-icon"><i class="fas fa-undo"></i></span>
