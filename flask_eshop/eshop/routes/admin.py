@@ -129,6 +129,7 @@ def add_product():
 
 @bp.route('/edit_product/<int:product_id>', methods=['GET', 'POST'])
 def edit_product(product_id):
+    product = None
     try:
         with get_cursor() as cur:
             cur.execute("SELECT * FROM products WHERE product_id = ?", (product_id,))
@@ -167,11 +168,15 @@ def edit_product(product_id):
                  fields['price'], fields['stock_quantity'], fields['category'], image_path, product_id)
             )
         flash(_('Product updated successfully!'), 'success')
-        return redirect(url_for('admin.products'))
+        # Stay on the form so the admin can check the saved values and keep editing
+        return redirect(url_for('admin.edit_product', product_id=product_id))
     except Exception:
         current_app.logger.exception('Editing product %s failed', product_id)
         flash(_('An unexpected error occurred. Please try again.'), 'danger')
-        return redirect(url_for('admin.products'))
+        if product is None:
+            return redirect(url_for('admin.products'))
+        # Keep what the admin typed instead of throwing it away
+        return render_template('admin/edit_product.html', product=form_values(product, request.form))
 
 
 @bp.route('/delete_product/<int:product_id>', methods=['POST'])

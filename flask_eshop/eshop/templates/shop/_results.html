@@ -53,6 +53,18 @@
         </a>
         {% endif %}
     </nav>
+
+    <!-- Type a page number (works without JavaScript; shop.js loads it in place) -->
+    <form class="page-jump" action="{{ url_for('main.home') }}" method="get">
+        {% for key, value in filter_params.items() %}
+        <input type="hidden" name="{{ key }}" value="{{ value }}">
+        {% endfor %}
+        <label for="pageJumpInput">{{ _('Go to page') }}</label>
+        <input type="number" id="pageJumpInput" name="page" class="page-jump-input" inputmode="numeric"
+               min="1" max="{{ total_pages }}" value="{{ page }}" required>
+        <span class="page-jump-total">{{ _('of {n}', n=total_pages) }}</span>
+        <button type="submit" class="page-link page-jump-go" aria-label="{{ _('Go') }}"><i class="fas fa-arrow-right"></i></button>
+    </form>
     {% endif %}
 {% else %}
     <div class="empty-state">

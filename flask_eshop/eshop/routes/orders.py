@@ -8,6 +8,21 @@ from ..security import login_required
 bp = Blueprint('orders', __name__)
 
 
+# Separators GROUP_CONCAT puts between products and between a name and its quantity
+ITEM_SEP, FIELD_SEP = '\x1e', '\x1f'
+
+
+def with_products(row):
+    """Order row as a dict with its products as [{'name', 'quantity'}].
+
+    The query joins them with control characters, so names containing commas stay whole.
+    """
+    order = dict(row)
+    entries = (order.pop('product_list') or '').split(ITEM_SEP)
+    order['products'] = [dict(zip(('name', 'quantity'), entry.split(FIELD_SEP))) for entry in entries if entry]
+    return order
+
+
 @bp.route('/orders')
 @login_required
 def user_orders():
@@ -25,7 +40,7 @@ def user_orders():
                     SELECT o.*,
                            u.username,
                            u.email,
-                           GROUP_CONCAT({product_name} || ' (x' || oi.quantity || ')') as product_names
+                           GROUP_CONCAT({product_name} || char(31) || oi.quantity, char(30)) AS product_list
                     FROM orders o
                     JOIN users u ON o.user_id = u.user_id
                     JOIN order_items oi ON o.order_id = oi.order_id
@@ -37,7 +52,7 @@ def user_orders():
                 # Regular users only see their own orders
                 cur.execute(f"""
                     SELECT o.*,
-                           GROUP_CONCAT({product_name} || ' (x' || oi.quantity || ')') as product_names
+                           GROUP_CONCAT({product_name} || char(31) || oi.quantity, char(30)) AS product_list
                     FROM orders o
                     JOIN order_items oi ON o.order_id = oi.order_id
                     JOIN products p ON oi.product_id = p.product_id
@@ -45,7 +60,7 @@ def user_orders():
                     GROUP BY o.order_id
                     ORDER BY o.created_at DESC
                 """, (session['user_id'],))
-            orders = cur.fetchall()
+            orders = [with_products(row) for row in cur.fetchall()]
         return render_template(template, orders=orders)
     except Exception:
         current_app.logger.exception('Loading orders failed')

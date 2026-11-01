@@ -390,6 +390,17 @@
     box-shadow: 0 4px 12px rgba(var(--ink-rgb), 0.15);
 }
 
+/* While an order's status or a product deletion is being saved */
+.data-row.is-updating {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.data-row.is-removing {
+    opacity: 0;
+    transform: translateX(24px);
+}
+
 .btn-edit {
     background: var(--primary);
 }
@@ -740,13 +751,13 @@
 @media (max-width: 768px) {
     .admin-stats,
     .orders-stats {
-        grid-template-columns: 1fr;
-        gap: 15px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
     }
     
     .stat-item,
     .order-stat {
-        padding: 20px;
+        padding: 14px;
     }
     
     .header-content h1 {
@@ -787,8 +798,8 @@
     }
     
     .btn-action {
-        width: 32px;
-        height: 32px;
+        width: 38px;
+        height: 38px;
     }
     
     .user-orders-container {

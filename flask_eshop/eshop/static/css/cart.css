@@ -342,6 +342,7 @@
     z-index: 10001;
     width: min(420px, 100vw);
     height: 100vh;
+    height: 100dvh; /* the visible height on phones, so the checkout button isn't hidden behind the browser bar */
     height: 100dvh;
     display: flex;
     flex-direction: column;
@@ -781,20 +782,39 @@
     font-size: 1rem;
 }
 
-.summary-item-qty {
-    position: absolute;
-    top: -7px;
-    right: -7px;
-    min-width: 20px;
-    height: 20px;
-    padding: 0 5px;
-    border-radius: 999px;
-    background: var(--ink);
-    color: #fff;
-    font-size: 0.7rem;
-    font-weight: 700;
-    line-height: 20px;
-    text-align: center;
+.summary-item-info {
+    display: grid;
+    gap: 0.4rem;
+    justify-items: start;
+    min-width: 0;
+}
+
+.summary-item-info .cart-item-qty {
+    border-radius: 8px;
+}
+
+.summary-item-info .qty-btn {
+    width: 28px;
+    height: 28px;
+}
+
+.summary-item-info .qty-value {
+    min-width: 26px;
+    font-size: 0.85rem;
+}
+
+.summary-item {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.summary-item.is-updating {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.summary-item.is-removing {
+    opacity: 0;
+    transform: translateX(16px);
 }
 
 .summary-item-name {
@@ -887,5 +907,22 @@
 
     .checkout-steps li:not(:last-child)::after {
         width: 20px;
+    }
+
+    .checkout-steps {
+        gap: 0.5rem;
+        font-size: 0.82rem;
+        margin-bottom: 1.25rem;
+    }
+
+    /* Bigger touch targets for the quantity buttons */
+    .qty-btn,
+    .summary-item-info .qty-btn {
+        width: 38px;
+        height: 38px;
+    }
+
+    .summary-card {
+        padding: 1.15rem;
     }
 }

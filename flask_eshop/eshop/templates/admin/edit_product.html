@@ -113,10 +113,17 @@
             <button type="submit" class="btn btn-primary btn-lg">
                 <i class="fas fa-save"></i> {{ _('Update Product') }}
             </button>
+            <a href="{{ url_for('main.product_detail', product_id=product.product_id) }}" class="btn btn-outline" target="_blank" rel="noopener">
+                <i class="fas fa-external-link-alt"></i> {{ _('View in shop') }}
+            </a>
             <a href="{{ url_for('admin.products') }}" class="btn btn-secondary">
-                <i class="fas fa-times"></i> {{ _('Cancel') }}
+                <i class="fas fa-arrow-left"></i> {{ _('Back to products') }}
             </a>
         </div>
     </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/admin-product-form.js') }}"></script>
 {% endblock %}

@@ -137,6 +137,11 @@ def home():
 
     try:
         products, total = query_products(filters, page, per_page)
+        # A typed page number past the end shows the last page instead of an empty one
+        last_page = max((total + per_page - 1) // per_page, 1)
+        if page > last_page:
+            page = context['page'] = last_page
+            products, total = query_products(filters, page, per_page)
         context.update(products=products, total=total, total_pages=(total + per_page - 1) // per_page)
 
         with get_cursor() as cur:

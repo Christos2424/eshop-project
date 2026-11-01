@@ -79,6 +79,8 @@ def login():
                 session["user_id"] = user['user_id']
                 session["username"] = user['username']
                 session["role"] = user['role']
+                # Pre-fills the checkout form
+                session["email"] = user['email']
                 flash(_('Login successful!'), 'success')
 
                 # Clear rate limiting for successful login

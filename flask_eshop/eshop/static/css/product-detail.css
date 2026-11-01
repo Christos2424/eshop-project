@@ -107,6 +107,84 @@
     opacity: 0;
 }
 
+.hint-touch {
+    display: none;
+}
+
+/* Phones and tablets: tapping opens the full-screen viewer (product.js) */
+@media (hover: none), (pointer: coarse) {
+    .hint-hover {
+        display: none;
+    }
+
+    .hint-touch {
+        display: inline;
+    }
+}
+
+/* Full-screen image viewer: pinch, drag and double-tap to zoom */
+.image-viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 10600;
+    display: grid;
+    place-items: center;
+    background: rgba(var(--ink-rgb), 0.94);
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow: hidden;
+    animation: fadeOnly 0.2s ease;
+}
+
+.image-viewer.is-leaving {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.image-viewer img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    transform-origin: 0 0;
+    will-change: transform;
+    -webkit-user-drag: none;
+    pointer-events: none;
+}
+
+.image-viewer img.is-animating {
+    transition: transform 0.25s var(--ease);
+}
+
+.image-viewer-close {
+    position: absolute;
+    top: calc(0.75rem + env(safe-area-inset-top));
+    right: 0.75rem;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
+.image-viewer-tip {
+    position: absolute;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+}
+
 /* Product info */
 .product-category-chip {
     display: inline-block;
@@ -855,5 +933,22 @@
 
     .tabs-content {
         padding: 1.25rem;
+    }
+
+    .tabs-header {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding: 0 0.5rem;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .tabs-header::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tab-btn {
+        padding: 0.85rem 0.75rem;
+        font-size: 0.88rem;
     }
 }

@@ -24,19 +24,19 @@
 
     <div class="admin-stats">
         <div class="stat-item">
-            <div class="stat-number">{{ products|length }}</div>
+            <div class="stat-number" data-stat="total">{{ products|length }}</div>
             <div class="stat-label">{{ _('Total Products') }}</div>
         </div>
         <div class="stat-item">
-            <div class="stat-number">{{ products|selectattr('stock_quantity', 'gt', 0)|list|length }}</div>
+            <div class="stat-number" data-stat="in_stock">{{ products|selectattr('stock_quantity', 'gt', 0)|list|length }}</div>
             <div class="stat-label">{{ _('In Stock') }}</div>
         </div>
         <div class="stat-item">
-            <div class="stat-number">{{ products|selectattr('stock_quantity', 'eq', 0)|list|length }}</div>
+            <div class="stat-number" data-stat="out_of_stock">{{ products|selectattr('stock_quantity', 'eq', 0)|list|length }}</div>
             <div class="stat-label">{{ _('Out of Stock') }}</div>
         </div>
         <div class="stat-item">
-            <div class="stat-number">{{ products|selectattr('stock_quantity', 'lt', 10)|selectattr('stock_quantity', 'gt', 0)|list|length }}</div>
+            <div class="stat-number" data-stat="low_stock">{{ products|selectattr('stock_quantity', 'lt', 10)|selectattr('stock_quantity', 'gt', 0)|list|length }}</div>
             <div class="stat-label">{{ _('Low Stock') }}</div>
         </div>
     </div>
