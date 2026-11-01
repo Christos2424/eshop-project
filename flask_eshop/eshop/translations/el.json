@@ -11,6 +11,10 @@
   "Beauty & Care": "Ομορφιά & Περιποίηση",
   "Toys & Games": "Παιχνίδια",
   "Food": "Τρόφιμα",
+  "Pet Supplies": "Κατοικίδια",
+  "Garden & DIY": "Κήπος & Εργαλεία",
+  "Office & Stationery": "Γραφείο & Χαρτικά",
+  "Automotive": "Αυτοκίνητο",
   "General": "Γενικά",
 
   "Free shipping on orders over €{amount}": "Δωρεάν αποστολή για παραγγελίες άνω των €{amount}",
@@ -107,6 +111,8 @@
   "Apply": "Εφαρμογή",
   "Saved for later": "Αποθηκεύτηκε για αργότερα",
   "Saved items": "Αποθηκευμένα προϊόντα",
+  "Nothing saved yet": "Δεν έχετε αποθηκεύσει τίποτα ακόμα",
+  "Tap the heart on a product to keep it here for later.": "Πατήστε την καρδιά σε ένα προϊόν για να το κρατήσετε εδώ για αργότερα.",
   "Recently viewed": "Είδατε πρόσφατα",
   "Clear": "Καθαρισμός",
 

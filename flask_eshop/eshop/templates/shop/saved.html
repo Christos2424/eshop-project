@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('Saved items') }} - eShop{% endblock %}
+
+{% block content %}
+<div class="saved-page">
+    <!-- Filled from localStorage by strips.js -->
+    <section class="product-strip" id="savedStrip" hidden>
+        <div class="strip-header">
+            <h2><i class="fas fa-heart"></i> {{ _('Saved items') }}</h2>
+        </div>
+        <div class="strip-track" data-strip-track></div>
+    </section>
+
+    <div class="empty-state saved-empty" id="savedEmpty" hidden>
+        <i class="far fa-heart"></i>
+        <h2>{{ _('Nothing saved yet') }}</h2>
+        <p>{{ _('Tap the heart on a product to keep it here for later.') }}</p>
+        <a href="{{ url_for('main.home') }}" class="btn btn-primary">{{ _('Start shopping') }}</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/strips.js') }}"></script>
+{% endblock %}

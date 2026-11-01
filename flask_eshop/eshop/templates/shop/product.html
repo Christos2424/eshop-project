@@ -24,7 +24,7 @@
         <!-- Product Image (hover to zoom, see product.js) -->
         <div class="product-gallery">
             <div class="gallery-frame {{ 'has-image' if product.image_url }}" id="galleryFrame">
-                {{ product_image(product, 'main-product-image') }}
+                {{ product_image(product, 'main-product-image', full=True) }}
                 {% if stock == 0 %}
                 <span class="badge badge-dark gallery-badge">{{ _('Sold out') }}</span>
                 {% elif stock < 10 %}

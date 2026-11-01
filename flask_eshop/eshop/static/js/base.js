@@ -932,8 +932,19 @@ function syncWishlistButtons(root = document) {
     });
 }
 
+// Number of saved items next to "Saved items" in the user menu
+function syncWishlistCount() {
+    const count = getWishlist().length;
+    document.querySelectorAll('[data-wishlist-count]').forEach(badge => {
+        badge.textContent = count;
+        badge.hidden = count === 0;
+    });
+}
+
 function initWishlist() {
     syncWishlistButtons();
+    syncWishlistCount();
+    window.addEventListener('wishlist:change', syncWishlistCount);
 
     document.addEventListener('click', function(e) {
         const button = e.target.closest('[data-wishlist-toggle]');
@@ -956,7 +967,7 @@ function initWishlist() {
         if (adding) {
             showToast(t('Saved for later'), 'success', 3000, document.getElementById('savedStrip') ? null : {
                 label: t('View saved'),
-                onClick: () => { window.location.href = `${window.APP_URLS.home}#savedStrip`; }
+                onClick: () => { window.location.href = window.APP_URLS.saved; }
             });
         } else {
             showToast(t('Removed from saved items'), 'info', 2500);

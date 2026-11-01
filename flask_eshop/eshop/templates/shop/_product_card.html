@@ -1,10 +1,11 @@
 {# Import with context so the macros can use image_src, csrf_token and the translation helpers #}
 {% from 'shop/_stars.html' import stars with context %}
 
-{% macro product_image(product, class='') %}
+{# full: the large version of the image; lists use the small one #}
+{% macro product_image(product, class='', full=False) %}
     {% set name = product|localized('name') %}
     {% if product.image_url %}
-        <img src="{{ image_src(product.image_url) }}" alt="{{ name }}" class="{{ class }}" loading="lazy" data-fallback="icon">
+        <img src="{{ image_src(product.image_url, thumb=not full) }}" alt="{{ name }}" class="{{ class }}" loading="lazy" data-fallback="icon">
     {% else %}
         {# No photo: an icon and colour for the product's category #}
         {% set art = placeholder_art(product.category) %}

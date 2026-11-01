@@ -99,14 +99,7 @@
     </div>
 </section>
 
-<!-- Filled from localStorage by shop.js; hidden until there is something to show -->
-<section class="product-strip" id="savedStrip" hidden>
-    <div class="strip-header">
-        <h2><i class="fas fa-heart"></i> {{ _('Saved items') }}</h2>
-    </div>
-    <div class="strip-track" data-strip-track></div>
-</section>
-
+<!-- Filled from localStorage by strips.js; hidden until there is something to show -->
 <section class="product-strip" id="recentStrip" hidden>
     <div class="strip-header">
         <h2><i class="fas fa-history"></i> {{ _('Recently viewed') }}</h2>
@@ -118,4 +111,5 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/shop.js') }}"></script>
+<script src="{{ url_for('static', filename='js/strips.js') }}"></script>
 {% endblock %}
