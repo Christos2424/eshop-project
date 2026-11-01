@@ -43,11 +43,11 @@
 
                 <div class="order-card-body">
                     <ul class="order-items-preview">
-                        {% if order.product_names %}
-                            {% for product_info in order.product_names.split(',') %}
+                        {% if order.products %}
+                            {% for product in order.products %}
                             <li>
-                                <span class="order-item-name">{{ product_info.split('(x')[0].strip() }}</span>
-                                <span class="order-item-qty">×{{ product_info.split('(x')[1].replace(')', '').strip() if '(x' in product_info else '1' }}</span>
+                                <span class="order-item-name">{{ product.name }}</span>
+                                <span class="order-item-qty">×{{ product.quantity }}</span>
                             </li>
                             {% endfor %}
                         {% else %}

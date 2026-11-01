@@ -96,7 +96,7 @@
                     <i class="fas fa-arrow-left"></i> {{ _('Back to cart') }}
                 </a>
                 <button type="submit" class="btn btn-primary btn-lg btn-checkout">
-                    <i class="fas fa-lock"></i> {{ _('Place order · {total}', total=totals.total|currency) }}
+                    <i class="fas fa-lock"></i> <span data-place-order-label>{{ _('Place order · {total}', total=totals.total|currency) }}</span>
                 </button>
             </div>
         </form>
@@ -107,13 +107,35 @@
 
             <ul class="summary-items">
                 {% for item in cart_items %}
-                <li class="summary-item">
+                {% set name = item.product|localized('name') %}
+                <li class="summary-item" data-product-id="{{ item.product.product_id }}">
                     <span class="summary-item-media">
                         {{ product_image(item.product, 'summary-item-image') }}
-                        <span class="summary-item-qty">{{ item.quantity }}</span>
                     </span>
-                    <span class="summary-item-name">{{ item.product|localized('name') }}</span>
-                    <span class="summary-item-price">{{ item.total|currency }}</span>
+                    <div class="summary-item-info">
+                        <span class="summary-item-name">{{ name }}</span>
+                        <div class="cart-item-qty">
+                            <form action="{{ url_for('cart.update_cart') }}" method="post" class="cart-qty-form" data-step="-1">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="product_id" value="{{ item.product.product_id }}">
+                                <input type="hidden" name="quantity" value="{{ item.quantity - 1 }}">
+                                <button type="submit" class="qty-btn" data-remove-label="{{ _('Remove {name}', name=name) }}"
+                                        aria-label="{{ _('Remove {name}', name=name) if item.quantity <= 1 else _('Decrease quantity') }}">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                            </form>
+                            <span class="qty-value" data-qty aria-label="{{ _('Quantity') }}">{{ item.quantity }}</span>
+                            <form action="{{ url_for('cart.update_cart') }}" method="post" class="cart-qty-form" data-step="1">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="product_id" value="{{ item.product.product_id }}">
+                                <input type="hidden" name="quantity" value="{{ item.quantity + 1 }}">
+                                <button type="submit" class="qty-btn" aria-label="{{ _('Increase quantity') }}" {{ 'disabled' if item.quantity >= item.product.stock_quantity }}>
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <span class="summary-item-price" data-line-total>{{ item.total|currency }}</span>
                 </li>
                 {% endfor %}
             </ul>
@@ -121,19 +143,19 @@
             <dl class="summary-lines">
                 <div class="summary-line">
                     <dt>{{ _('Subtotal') }}</dt>
-                    <dd>{{ totals.subtotal|currency }}</dd>
+                    <dd data-cart-field="subtotal">{{ totals.subtotal|currency }}</dd>
                 </div>
                 <div class="summary-line">
                     <dt>{{ _('Shipping') }}</dt>
-                    <dd>{{ _('Free') if totals.shipping == 0 else totals.shipping|currency }}</dd>
+                    <dd data-cart-field="shipping">{{ _('Free') if totals.shipping == 0 else totals.shipping|currency }}</dd>
                 </div>
                 <div class="summary-line">
                     <dt>{{ _('Tax ({rate}%)', rate=(config.TAX_RATE * 100)|round|int) }}</dt>
-                    <dd>{{ totals.tax|currency }}</dd>
+                    <dd data-cart-field="tax">{{ totals.tax|currency }}</dd>
                 </div>
                 <div class="summary-line summary-total">
                     <dt>{{ _('Total') }}</dt>
-                    <dd>{{ totals.total|currency }}</dd>
+                    <dd data-cart-field="total">{{ totals.total|currency }}</dd>
                 </div>
             </dl>
 

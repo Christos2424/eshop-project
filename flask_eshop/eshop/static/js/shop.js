@@ -117,6 +117,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // "Go to page" box under the page links: keeps the current filters
+    results.addEventListener('submit', function(e) {
+        const form = e.target.closest('.page-jump');
+        if (!form) return;
+        e.preventDefault();
+
+        const input = form.elements.page;
+        const page = parseInt(input.value, 10);
+        const max = parseInt(input.max, 10);
+        if (!(page >= 1 && page <= max)) {
+            replayAnimation(input, 'is-invalid');
+            showToast(t('Enter a page between 1 and {n}', { n: max }), 'warning');
+            input.select();
+            return;
+        }
+
+        const params = new URLSearchParams(new FormData(form));
+        if (page === 1) params.delete('page');
+        loadResults(shopUrl(params));
+    });
+
     // Header search: a new search keeps only the sort order
     const searchForm = document.getElementById('headerSearchForm');
     searchForm?.addEventListener('submit', function(e) {

@@ -31,7 +31,11 @@
                 <span class="badge badge-warning gallery-badge">{{ _('Only {n} left', n=stock) }}</span>
                 {% endif %}
                 {% if product.image_url %}
-                <span class="gallery-hint"><i class="fas fa-search-plus"></i> {{ _('Hover to zoom') }}</span>
+                <span class="gallery-hint">
+                    <i class="fas fa-search-plus"></i>
+                    <span class="hint-hover">{{ _('Hover to zoom') }}</span>
+                    <span class="hint-touch">{{ _('Tap to zoom') }}</span>
+                </span>
                 {% endif %}
             </div>
         </div>

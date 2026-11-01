@@ -193,7 +193,11 @@ def update_cart():
             save_cart(cart)
             return cart_response(False, _('This product is out of stock and was removed from your cart'), 'warning')
 
+        # Stock may have dropped below what's already in the cart: lower it to what's available
+        # (otherwise pressing minus could still ask for too many and never get through)
         if quantity > product['stock_quantity']:
+            cart[product_id] = min(cart[product_id], product['stock_quantity'])
+            save_cart(cart)
             return cart_response(False, _('Only {n} units available', n=product['stock_quantity']), 'warning')
 
         if quantity <= 0:
@@ -256,7 +260,11 @@ def checkout():
 
     if request.method == 'GET':
         # Show checkout page with totals
-        cart_items, subtotal, _removed = get_cart_items()
+        cart_items, subtotal, removed = get_cart_items()
+        if removed:
+            flash(_('Some items in your cart are no longer available and have been removed.'), 'warning')
+        if not cart_items:
+            return redirect(url_for("cart.view_cart"))
         return render_template('cart/checkout.html', cart_items=cart_items, totals=cart_totals(subtotal))
 
     # POST request - process the actual checkout

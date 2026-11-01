@@ -25,15 +25,15 @@
             <div class="stat-label">{{ _('Total Orders') }}</div>
         </div>
         <div class="order-stat">
-            <div class="stat-number">{{ orders|selectattr('status', 'equalto', 'pending')|list|length }}</div>
+            <div class="stat-number" data-stat="pending">{{ orders|selectattr('status', 'equalto', 'pending')|list|length }}</div>
             <div class="stat-label">{{ _('Pending') }}</div>
         </div>
         <div class="order-stat">
-            <div class="stat-number">{{ orders|selectattr('status', 'equalto', 'paid')|list|length }}</div>
+            <div class="stat-number" data-stat="paid">{{ orders|selectattr('status', 'equalto', 'paid')|list|length }}</div>
             <div class="stat-label">{{ _('Paid') }}</div>
         </div>
         <div class="order-stat">
-            <div class="stat-number">{{ orders|selectattr('status', 'equalto', 'shipped')|list|length }}</div>
+            <div class="stat-number" data-stat="shipped">{{ orders|selectattr('status', 'equalto', 'shipped')|list|length }}</div>
             <div class="stat-label">{{ _('Shipped') }}</div>
         </div>
     </div>
@@ -94,11 +94,11 @@
                             </td>
                             <td class="order-products">
                                 <div class="order-product-list">
-                                    {% if order.product_names %}
-                                        {% for product_info in order.product_names.split(',') %}
+                                    {% if order.products %}
+                                        {% for product in order.products %}
                                             <div class="order-product-item">
-                                                <span class="order-product-name">{{ product_info.split('(x')[0].strip() }}</span>
-                                                <span class="order-product-quantity">{{ product_info.split('(x')[1].replace(')', '').strip() if '(x' in product_info else 'x1' }}</span>
+                                                <span class="order-product-name">{{ product.name }}</span>
+                                                <span class="order-product-quantity">×{{ product.quantity }}</span>
                                             </div>
                                         {% endfor %}
                                     {% else %}
@@ -112,23 +112,22 @@
                             </td>
                             <td>
                                 <div class="admin-actions">
-                                    <button class="btn-action btn-edit" onclick="viewOrderDetails({{ order.order_id }})" title="{{ _('View Order') }}">
+                                    <button class="btn-action btn-edit" data-order-details="{{ order.order_id }}" title="{{ _('View Order') }}">
                                         <i class="fas fa-eye"></i>
                                     </button>
-                                    {% if order.status == 'pending' %}
-                                    <button class="btn-action btn-edit" onclick="updateOrderStatus({{ order.order_id }}, 'paid')" title="{{ _('Mark as Paid') }}">
+                                    {# data-show-for: the statuses an action is offered for; admin-orders.js keeps them in step #}
+                                    <button class="btn-action btn-edit" data-set-status="paid" data-show-for="pending"
+                                            title="{{ _('Mark as Paid') }}" {{ 'hidden' if order.status != 'pending' }}>
                                         <i class="fas fa-check"></i>
                                     </button>
-                                    {% elif order.status == 'paid' %}
-                                    <button class="btn-action btn-edit" onclick="updateOrderStatus({{ order.order_id }}, 'shipped')" title="{{ _('Mark as Shipped') }}">
+                                    <button class="btn-action btn-edit" data-set-status="shipped" data-show-for="paid"
+                                            title="{{ _('Mark as Shipped') }}" {{ 'hidden' if order.status != 'paid' }}>
                                         <i class="fas fa-shipping-fast"></i>
                                     </button>
-                                    {% endif %}
-                                    {% if order.status != 'cancelled' %}
-                                    <button class="btn-action btn-delete" onclick="updateOrderStatus({{ order.order_id }}, 'cancelled')" title="{{ _('Cancel Order') }}">
+                                    <button class="btn-action btn-delete" data-set-status="cancelled" data-show-for="pending paid shipped"
+                                            title="{{ _('Cancel Order') }}" {{ 'hidden' if order.status == 'cancelled' }}>
                                         <i class="fas fa-times"></i>
                                     </button>
-                                    {% endif %}
                                 </div>
                             </td>
                         </tr>

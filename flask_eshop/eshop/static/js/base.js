@@ -120,6 +120,35 @@ function postForm(url, data) {
     return requestJSON(url, { method: 'POST', body });
 }
 
+// Send a regular (non-AJAX) form in the background. The server answers as usual with a
+// redirect to a page, so routes need no JSON version: returns that page as a document
+// plus its flash messages as [{ category, text }].
+async function submitFormInBackground(form) {
+    setLoading(true);
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body: new FormData(form),
+            credentials: 'same-origin'
+        });
+        if (!response.ok) throw new Error(`Unexpected response (${response.status})`);
+        const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
+        const messages = Array.from(doc.querySelectorAll('.flash')).map(flash => ({
+            category: (flash.className.match(/flash-(\w+)/) || [])[1] || 'info',
+            text: flash.querySelector('.flash-text').textContent.trim()
+        }));
+        return { doc, messages };
+    } finally {
+        setLoading(false);
+    }
+}
+
+// Show flash messages from submitFormInBackground() as toasts; true if one of them was a success
+function toastMessages(messages) {
+    messages.forEach(message => showToast(message.text, message.category));
+    return messages.some(message => message.category === 'success');
+}
+
 // Product image, or an icon for its category when there is no image (art: { icon, hue } from the server)
 function imageHtml(src, alt, className = '', art = null) {
     if (!src) {
@@ -529,7 +558,8 @@ function showToast(message, type = 'info', duration = 4000, action = null) {
         <span class="toast-icon"><i class="fas ${TOAST_ICONS[type] || TOAST_ICONS.info}"></i></span>
         <span class="toast-message">${escapeHtml(message)}</span>
         ${action ? `<button type="button" class="toast-action">${escapeHtml(action.label)}</button>` : ''}
-        <button type="button" class="toast-close" aria-label="${escapeHtml(t('Dismiss'))}"><i class="fas fa-times"></i></button>`;
+        <button type="button" class="toast-close" aria-label="${escapeHtml(t('Dismiss'))}"><i class="fas fa-times"></i></button>
+        <span class="toast-progress" style="animation-duration: ${duration}ms"></span>`;
 
     const dismiss = () => fadeOut(toast);
     toast.querySelector('.toast-close').addEventListener('click', dismiss);
@@ -541,11 +571,18 @@ function showToast(message, type = 'info', duration = 4000, action = null) {
     }
     stack.appendChild(toast);
 
-    // Pause while hovered so there is time to click the action
-    let timer = setTimeout(dismiss, duration);
-    toast.addEventListener('mouseenter', () => clearTimeout(timer));
+    // Timer-based so it still works when animations are reduced; hovering pauses it
+    // (and the countdown bar, in CSS) so there is time to click the action
+    let remaining = duration;
+    let startedAt = Date.now();
+    let timer = setTimeout(dismiss, remaining);
+    toast.addEventListener('mouseenter', () => {
+        clearTimeout(timer);
+        remaining -= Date.now() - startedAt;
+    });
     toast.addEventListener('mouseleave', () => {
-        timer = setTimeout(dismiss, 1500);
+        startedAt = Date.now();
+        timer = setTimeout(dismiss, Math.max(remaining, 1000));
     });
 }
 

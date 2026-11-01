@@ -383,6 +383,42 @@
     border: 1px solid var(--line);
 }
 
+/* Ticking "Remove current image" fades it out (admin-product-form.js) */
+.current-image .product-image-preview {
+    transition: opacity 0.25s ease, filter 0.25s ease;
+}
+
+.current-image.is-removed .product-image-preview {
+    opacity: 0.35;
+    filter: grayscale(1);
+}
+
+/* Preview of the image that will be saved (admin-product-form.js) */
+.image-live-preview {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--surface-2);
+}
+
+.image-live-preview img {
+    width: 96px;
+    height: 96px;
+    object-fit: contain;
+    border-radius: 10px;
+    background: var(--surface);
+}
+
+.image-live-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    word-break: break-all;
+}
+
 .image-actions {
     flex: 1;
 }

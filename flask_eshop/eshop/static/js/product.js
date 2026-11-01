@@ -6,8 +6,43 @@ document.addEventListener('DOMContentLoaded', function() {
     initTabs();
     initQuantityStepper();
     initImageZoom();
+    initImageViewer();
+    initReviewForms();
     rememberRecentlyViewed(Number(page.dataset.productId));
 });
+
+// Post, edit and delete reviews without reloading the page: the reviews tab, its count
+// and the rating under the title are swapped in from the page the server sends back
+function initReviewForms() {
+    const pane = document.getElementById('reviews');
+    if (!pane) return;
+
+    pane.addEventListener('submit', async function(e) {
+        const form = e.target.closest('.review-form, .review-delete');
+        if (!form) return;
+        e.preventDefault();
+
+        const button = form.querySelector('button[type="submit"]');
+        button.disabled = true;
+        try {
+            const { doc, messages } = await submitFormInBackground(form);
+            // On an error keep the form as it is, so nothing the user typed is lost
+            if (toastMessages(messages)) {
+                ['#reviews', '#tab-reviews .tab-count', '.product-rating-link'].forEach(selector => {
+                    const fresh = doc.querySelector(selector);
+                    const current = document.querySelector(selector);
+                    if (fresh && current) current.innerHTML = fresh.innerHTML;
+                });
+                replayAnimation(pane, 'fade-in');
+            }
+        } catch (error) {
+            console.error('Error saving review:', error);
+            showToast(t('An unexpected error occurred. Please try again.'), 'error');
+        } finally {
+            button.disabled = false;
+        }
+    });
+}
 
 // Tabs, with arrow-key navigation between them
 function initTabs() {
@@ -116,6 +151,160 @@ function initImageZoom() {
         const y = (e.clientY - rect.top) / rect.height * 100;
         image.style.transformOrigin = `${x}% ${y}%`;
     });
+}
+
+// Touch screens: tap the image for a full-screen viewer with pinch, drag and double-tap zoom
+function initImageViewer() {
+    const frame = document.getElementById('galleryFrame');
+    const source = frame && frame.querySelector('.main-product-image');
+    if (!source || source.tagName !== 'IMG') return;
+    // Mouse users get the hover zoom instead
+    if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+
+    frame.addEventListener('click', () => openImageViewer(source));
+}
+
+function openImageViewer(source) {
+    const MAX_SCALE = 5;
+    const viewer = document.createElement('div');
+    viewer.className = 'image-viewer';
+    viewer.setAttribute('role', 'dialog');
+    viewer.setAttribute('aria-modal', 'true');
+    viewer.setAttribute('aria-label', source.alt);
+    viewer.innerHTML = `
+        <img alt="${escapeHtml(source.alt)}" src="${escapeHtml(source.currentSrc || source.src)}">
+        <button type="button" class="image-viewer-close" aria-label="${escapeHtml(t('Close'))}"><i class="fas fa-times"></i></button>
+        <span class="image-viewer-tip">${escapeHtml(t('Pinch or double-tap to zoom'))}</span>`;
+    document.body.appendChild(viewer);
+    lockScroll(true);
+
+    const img = viewer.querySelector('img');
+    // The image sits centred; scale and (x, y) are applied from its top-left corner
+    let scale = 1, x = 0, y = 0;
+    const pointers = new Map();
+    let pinch = null;      // { distance, center } of the previous pinch step
+    let lastTap = 0;
+    let moved = false;
+
+    function apply(animate = false) {
+        img.classList.toggle('is-animating', animate);
+        img.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+    }
+
+    // Keep the picture on screen: when zoomed in its edges can't be dragged past the
+    // screen's edges, and when it is smaller than the screen it stays centred
+    function clamp() {
+        const box = viewer.getBoundingClientRect();
+        const axis = (size, view, base) => {
+            const scaled = size * scale;
+            if (scaled <= view) return [(view - scaled) / 2 - base, (view - scaled) / 2 - base];
+            return [view - scaled - base, -base];
+        };
+        const [minX, maxX] = axis(img.offsetWidth, box.width, (box.width - img.offsetWidth) / 2);
+        const [minY, maxY] = axis(img.offsetHeight, box.height, (box.height - img.offsetHeight) / 2);
+        x = Math.min(Math.max(x, minX), maxX);
+        y = Math.min(Math.max(y, minY), maxY);
+    }
+
+    // Zoom by a factor around a screen point, so that point stays under the fingers
+    function zoomAt(factor, clientX, clientY) {
+        const box = viewer.getBoundingClientRect();
+        const next = Math.min(Math.max(scale * factor, 1), MAX_SCALE);
+        const ratio = next / scale;
+        const px = clientX - box.left - (box.width - img.offsetWidth) / 2;
+        const py = clientY - box.top - (box.height - img.offsetHeight) / 2;
+        x = px - (px - x) * ratio;
+        y = py - (py - y) * ratio;
+        scale = next;
+        clamp();
+    }
+
+    function reset() {
+        scale = 1; x = 0; y = 0;
+    }
+
+    const pinchState = () => {
+        const [a, b] = [...pointers.values()];
+        return { distance: Math.hypot(a.x - b.x, a.y - b.y), center: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
+    };
+
+    viewer.addEventListener('pointerdown', function(e) {
+        if (e.target.closest('.image-viewer-close')) return;
+        viewer.setPointerCapture(e.pointerId);
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        moved = false;
+        pinch = pointers.size === 2 ? pinchState() : null;
+    });
+
+    viewer.addEventListener('pointermove', function(e) {
+        const previous = pointers.get(e.pointerId);
+        if (!previous) return;
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        if (pointers.size === 2 && pinch) {
+            const now = pinchState();
+            // Both fingers moving pans, spreading them zooms
+            x += now.center.x - pinch.center.x;
+            y += now.center.y - pinch.center.y;
+            zoomAt(now.distance / pinch.distance, now.center.x, now.center.y);
+            pinch = now;
+            moved = true;
+        } else if (pointers.size === 1 && scale > 1) {
+            x += e.clientX - previous.x;
+            y += e.clientY - previous.y;
+            clamp();
+            moved = true;
+        } else if (Math.hypot(e.clientX - previous.x, e.clientY - previous.y) > 3) {
+            moved = true;
+        }
+        apply();
+    });
+
+    function release(e) {
+        const wasSingleTap = e.type === 'pointerup' && pointers.size === 1 && !moved;
+        pointers.delete(e.pointerId);
+        pinch = null;
+
+        if (wasSingleTap) {
+            const now = Date.now();
+            if (now - lastTap < 300) {
+                // Double-tap zooms in where tapped, or back out
+                if (scale > 1) reset();
+                else zoomAt(2.5, e.clientX, e.clientY);
+                apply(true);
+                lastTap = 0;
+            } else {
+                lastTap = now;
+            }
+        } else if (scale < 1.02) {
+            reset();
+            apply(true);
+        }
+    }
+    viewer.addEventListener('pointerup', release);
+    viewer.addEventListener('pointercancel', release);
+
+    // Mouse wheel / trackpad pinch, for tablets with a mouse
+    viewer.addEventListener('wheel', function(e) {
+        e.preventDefault();
+        zoomAt(e.deltaY < 0 ? 1.2 : 1 / 1.2, e.clientX, e.clientY);
+        apply();
+    }, { passive: false });
+
+    function close() {
+        document.removeEventListener('keydown', onKey);
+        lockScroll(false);
+        viewer.classList.add('is-leaving');
+        setTimeout(() => viewer.remove(), 200);
+    }
+    function onKey(e) {
+        if (e.key === 'Escape') close();
+    }
+    document.addEventListener('keydown', onKey);
+    viewer.querySelector('.image-viewer-close').addEventListener('click', close);
+
+    // The tip fades out after a moment
+    setTimeout(() => viewer.querySelector('.image-viewer-tip')?.style.setProperty('opacity', '0'), 2500);
 }
 
 // Remembered in this browser for the "Recently viewed" row on the home page

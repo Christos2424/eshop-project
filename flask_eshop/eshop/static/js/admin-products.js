@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Products Filtering and Sorting
     const productsTableBody = document.getElementById('productsTableBody');
     if (productsTableBody) {
-        const productRows = Array.from(productsTableBody.querySelectorAll('.data-row'));
+        let productRows = Array.from(productsTableBody.querySelectorAll('.data-row'));
 
         let activeProductFilters = {
             stock: 'all',
@@ -73,6 +73,51 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 rows.forEach(row => productsTableBody.appendChild(row));
             }
+        }
+
+        // Delete without reloading: the row slides out and the counters update
+        // (data-confirm in base.js has already asked before the form submits)
+        productsTableBody.addEventListener('submit', async function(e) {
+            const form = e.target.closest('.action-form');
+            const row = form && form.closest('.data-row');
+            if (!row) return;
+            e.preventDefault();
+
+            row.classList.add('is-updating');
+            try {
+                const { messages } = await submitFormInBackground(form);
+                if (!toastMessages(messages)) return;
+
+                productRows = productRows.filter(r => r !== row);
+                updateStats();
+                row.classList.add('is-removing');
+                setTimeout(() => {
+                    row.remove();
+                    if (!productRows.length) applyProductFilters();
+                }, 300);
+            } catch (error) {
+                console.error('Error deleting product:', error);
+                showToast(t('An unexpected error occurred. Please try again.'), 'error');
+            } finally {
+                row.classList.remove('is-updating');
+            }
+        });
+
+        function updateStats() {
+            const stock = productRows.map(r => parseInt(r.dataset.stock, 10));
+            const counts = {
+                total: stock.length,
+                in_stock: stock.filter(n => n > 0).length,
+                out_of_stock: stock.filter(n => n === 0).length,
+                low_stock: stock.filter(n => n > 0 && n < 10).length
+            };
+            document.querySelectorAll('[data-stat]').forEach(stat => {
+                const value = String(counts[stat.dataset.stat]);
+                if (stat.textContent !== value) {
+                    stat.textContent = value;
+                    replayAnimation(stat, 'changed');
+                }
+            });
         }
 
         // Initialize filters on page load
