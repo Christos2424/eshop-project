@@ -196,6 +196,12 @@ def product_detail(product_id):
         return redirect(url_for('main.home'))
 
 
+@bp.route('/saved')
+def saved():
+    """Products the visitor saved for later; the list lives in their browser, so the page fills in with JavaScript"""
+    return render_template('shop/saved.html')
+
+
 @bp.route('/language/<code>')
 def set_language(code):
     """Switch language, then go back to the page the user was on"""

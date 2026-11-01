@@ -70,6 +70,11 @@
                     <div class="dropdown-header">
                         {{ _('Signed in as {name}', name=session['username']) }}
                     </div>
+                    <a href="{{ url_for('main.saved') }}" class="dropdown-item">
+                        <i class="fas fa-heart"></i>
+                        {{ _('Saved items') }}
+                        <span class="dropdown-count" data-wishlist-count hidden></span>
+                    </a>
                     {% if session['role'] != 'admin' %}
                     <a href="{{ url_for('orders.user_orders') }}" class="dropdown-item">
                         <i class="fas fa-receipt"></i>

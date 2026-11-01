@@ -749,3 +749,32 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* Saved items page: a wrapping grid instead of a scrolling row */
+.saved-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem 0 3rem;
+}
+
+.saved-page .product-strip {
+    margin-top: 1rem;
+}
+
+.saved-page .strip-track {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+    overflow: visible;
+}
+
+.saved-empty {
+    text-align: center;
+    padding: 4rem 1rem;
+}
+
+.saved-empty > i {
+    font-size: 2.5rem;
+    color: #e11d48;
+    margin-bottom: 1rem;
+}

@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 
 from ..db import get_cursor
 from ..i18n import gettext as _
-from ..images import save_uploaded_file, download_image_from_url
+from ..images import save_uploaded_file, download_image_from_url, delete_image
 from ..security import admin_required
 from ..validators import validate_product_data
 
@@ -154,6 +154,8 @@ def edit_product(product_id):
             image_path = None
             flash(_('Image removed successfully!'), 'success')
         image_path = new_image(request.form, request.files, product_id, product['image_url']) or image_path
+        if image_path != product['image_url']:
+            delete_image(product['image_url'])
 
         with get_cursor() as cur:
             cur.execute(
@@ -179,6 +181,8 @@ def delete_product(product_id):
             # Check if product exists in any orders
             cur.execute("SELECT COUNT(*) FROM order_items WHERE product_id = ?", (product_id,))
             order_count = cur.fetchone()[0]
+            cur.execute("SELECT image_url FROM products WHERE product_id = ?", (product_id,))
+            row = cur.fetchone()
 
             if order_count > 0:
                 flash(_('Cannot delete product that has been ordered. Consider archiving instead.'), 'danger')
@@ -186,6 +190,7 @@ def delete_product(product_id):
                 cur.execute("DELETE FROM reviews WHERE product_id = ?", (product_id,))
                 cur.execute("DELETE FROM products WHERE product_id = ?", (product_id,))
                 if cur.rowcount:
+                    delete_image(row['image_url'] if row else None)
                     flash(_('Product deleted successfully!'), 'success')
                 else:
                     flash(_('Product not found'), 'danger')

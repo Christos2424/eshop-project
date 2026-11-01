@@ -631,3 +631,20 @@
         padding: 0.5rem;
     }
 }
+
+.dropdown-count {
+    margin-left: auto;
+    min-width: 1.3rem;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.3rem;
+    text-align: center;
+}
+
+.dropdown-count[hidden] {
+    display: none;
+}
