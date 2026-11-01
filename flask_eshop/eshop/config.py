@@ -19,6 +19,9 @@ class Config:
     # Don't send the session cookie with requests started by other sites
     SESSION_COOKIE_SAMESITE = 'Lax'
 
+    # Set SESSION_COOKIE_SECURE=1 once the site is served over HTTPS, so the cookie is never sent over HTTP
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE') == '1'
+
     PRODUCTS_PER_PAGE = 12
     SEARCH_SUGGESTIONS = 6
 
