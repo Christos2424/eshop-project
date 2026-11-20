@@ -1,0 +1,6 @@
+{# Suggests existing categories so products share the same (translated) category names #}
+<datalist id="categoryOptions">
+    {% for category in global_categories %}
+    <option value="{{ category.name }}">{{ category_label(category.name) }}</option>
+    {% endfor %}
+</datalist>

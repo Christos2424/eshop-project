@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('Order Management') }} - Admin{% endblock %}
+
+{% block content %}
+{% set status_labels = {'pending': _('Pending'), 'paid': _('Paid'), 'shipped': _('Shipped'), 'cancelled': _('Cancelled')} %}
+
+<div class="admin-orders-container">
+    <div class="admin-orders-header">
+        <div class="header-content">
+            <h1><i class="fas fa-receipt"></i> {{ _('Order Management') }}</h1>
+            <p>{{ _('Manage and track all customer orders') }}</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('admin.products') }}" class="btn btn-outline">
+                <i class="fas fa-boxes"></i> {{ _('Manage Products') }}
+            </a>
+        </div>
+    </div>
+
+    <!-- Admin statistics -->
+    <div class="orders-stats">
+        <div class="order-stat">
+            <div class="stat-number">{{ orders|length }}</div>
+            <div class="stat-label">{{ _('Total Orders') }}</div>
+        </div>
+        <div class="order-stat">
+            <div class="stat-number" data-stat="pending">{{ orders|selectattr('status', 'equalto', 'pending')|list|length }}</div>
+            <div class="stat-label">{{ _('Pending') }}</div>
+        </div>
+        <div class="order-stat">
+            <div class="stat-number" data-stat="paid">{{ orders|selectattr('status', 'equalto', 'paid')|list|length }}</div>
+            <div class="stat-label">{{ _('Paid') }}</div>
+        </div>
+        <div class="order-stat">
+            <div class="stat-number" data-stat="shipped">{{ orders|selectattr('status', 'equalto', 'shipped')|list|length }}</div>
+            <div class="stat-label">{{ _('Shipped') }}</div>
+        </div>
+    </div>
+
+    {% if orders %}
+        <!-- Admin filters -->
+        <div class="admin-filters">
+            <div class="filter-section">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="orderStatusFilter"><i class="fas fa-filter"></i> {{ _('Order Status') }}</label>
+                        <select id="orderStatusFilter" class="filter-select">
+                            <option value="all">{{ _('All Statuses') }}</option>
+                            {% for status, label in status_labels.items() %}
+                            <option value="{{ status }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="orderSortBy"><i class="fas fa-sort"></i> {{ _('Sort Orders By') }}</label>
+                        <select id="orderSortBy" class="filter-select">
+                            <option value="id_asc">{{ _('Order ID: Low to High') }}</option>
+                            <option value="id_desc">{{ _('Order ID: High to Low') }}</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="orders-container">
+            <table class="orders-table">
+                <thead>
+                    <tr>
+                        <th>{{ _('Order ID') }}</th>
+                        <th>{{ _('Date') }}</th>
+                        <th>{{ _('Customer') }}</th>
+                        <th>{{ _('Products') }}</th>
+                        <th>{{ _('Total') }}</th>
+                        <th>{{ _('Status') }}</th>
+                        <th>{{ _('Actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody id="ordersTableBody">
+                    {% for order in orders %}
+                        <tr class="data-row"
+                            data-status="{{ order.status }}"
+                            data-id="{{ order.order_id }}">
+                            <td class="order-id">#{{ order.order_id }}</td>
+                            <td>
+                                <div class="order-date">{{ order.created_at[:16] }}</div>
+                            </td>
+                            <td>
+                                <div class="customer-info">
+                                    <div class="customer-name">{{ order.username }}</div>
+                                    <div>{{ order.email }}</div>
+                                </div>
+                            </td>
+                            <td class="order-products">
+                                <div class="order-product-list">
+                                    {% if order.products %}
+                                        {% for product in order.products %}
+                                            <div class="order-product-item">
+                                                <span class="order-product-name">{{ product.name }}</span>
+                                                <span class="order-product-quantity">×{{ product.quantity }}</span>
+                                            </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <span>{{ _('No products') }}</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="order-total">{{ order.total|currency }}</td>
+                            <td>
+                                <span class="order-status status-{{ order.status }}">{{ status_labels[order.status] }}</span>
+                            </td>
+                            <td>
+                                <div class="admin-actions">
+                                    <button class="btn-action btn-edit" data-order-details="{{ order.order_id }}" title="{{ _('View Order') }}">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    {# data-show-for: the statuses an action is offered for; admin-orders.js keeps them in step #}
+                                    <button class="btn-action btn-edit" data-set-status="paid" data-show-for="pending"
+                                            title="{{ _('Mark as Paid') }}" {{ 'hidden' if order.status != 'pending' }}>
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <button class="btn-action btn-edit" data-set-status="shipped" data-show-for="paid"
+                                            title="{{ _('Mark as Shipped') }}" {{ 'hidden' if order.status != 'paid' }}>
+                                        <i class="fas fa-shipping-fast"></i>
+                                    </button>
+                                    <button class="btn-action btn-delete" data-set-status="cancelled" data-show-for="pending paid shipped"
+                                            title="{{ _('Cancel Order') }}" {{ 'hidden' if order.status == 'cancelled' }}>
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-orders">
+            <i class="fas fa-receipt"></i>
+            <h3>{{ _('No Orders Yet') }}</h3>
+            <p>{{ _('Orders will appear here when customers make purchases') }}</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/orders.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin-orders.js') }}"></script>
+{% endblock %}

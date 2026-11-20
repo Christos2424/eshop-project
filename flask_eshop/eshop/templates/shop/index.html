@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('Home') }} - eShop{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-content">
+        <h1>{{ _('Find something<br>you\'ll love.') }}</h1>
+        <p>
+            {{ ngettext('Browse {n} product', 'Browse {n} products', store_total) }}
+            {{ ngettext('across {n} category', 'across {n} categories', global_categories|length) }},
+            {{ _('with free shipping on orders over {amount} €.', amount=config.FREE_SHIPPING_THRESHOLD) }}
+        </p>
+        <div class="hero-actions">
+            <a href="#shop" class="btn btn-light btn-lg" data-scroll-to="shop">
+                {{ _('Start shopping') }} <i class="fas fa-arrow-down"></i>
+            </a>
+            <button type="button" class="btn btn-ghost-light btn-lg" data-open-categories>
+                <i class="fas fa-th-large"></i> {{ _('Browse categories') }}
+            </button>
+        </div>
+    </div>
+    <ul class="hero-perks">
+        <li>
+            <span class="perk-icon"><i class="fas fa-shipping-fast"></i></span>
+            <div><strong>{{ _('Free shipping') }}</strong><span>{{ _('On orders over {amount} €', amount=config.FREE_SHIPPING_THRESHOLD) }}</span></div>
+        </li>
+        <li>
+            <span class="perk-icon"><i class="fas fa-undo"></i></span>
+            <div><strong>{{ _('30-day returns') }}</strong><span>{{ _('Changed your mind? No problem') }}</span></div>
+        </li>
+        <li>
+            <span class="perk-icon"><i class="fas fa-shield-alt"></i></span>
+            <div><strong>{{ _('2-year warranty') }}</strong><span>{{ _('Included with every product') }}</span></div>
+        </li>
+    </ul>
+</section>
+
+<section class="shop-section" id="shop">
+    <!-- Category chips: shop.js loads these without a page reload -->
+    <nav class="category-chips" id="categoryChips" aria-label="{{ _('Categories') }}">
+        <a href="{{ url_for('main.home') }}" class="chip {{ 'active' if not filters.category }}" data-shop-link data-category="">
+            {{ _('All') }}
+        </a>
+        {% for category in global_categories %}
+        {% set art = placeholder_art(category.name) %}
+        <a href="{{ url_for('main.home', category=category.name) }}"
+           class="chip {{ 'active' if filters.category == category.name }}"
+           data-shop-link data-category="{{ category.name }}">
+            <i class="fas {{ art.icon }} chip-icon" style="--hue: {{ art.hue }}"></i>
+            {{ category_label(category.name) }} <span class="chip-count">{{ category.count }}</span>
+        </a>
+        {% endfor %}
+    </nav>
+
+    <!-- Filters apply instantly with JavaScript; the Apply button is the no-JS fallback -->
+    <form class="shop-toolbar" id="shopFilters" method="get" action="{{ url_for('main.home') }}">
+        <input type="hidden" name="q" value="{{ filters.q }}">
+        <input type="hidden" name="category" value="{{ filters.category }}">
+
+        <label class="toolbar-field">
+            <span class="toolbar-label"><i class="fas fa-box"></i> {{ _('Availability') }}</span>
+            <select name="stock" class="toolbar-select">
+                <option value="all" {{ 'selected' if filters.stock == 'all' }}>{{ _('All products') }}</option>
+                <option value="in_stock" {{ 'selected' if filters.stock == 'in_stock' }}>{{ _('In stock') }}</option>
+                <option value="out_of_stock" {{ 'selected' if filters.stock == 'out_of_stock' }}>{{ _('Out of stock') }}</option>
+            </select>
+        </label>
+
+        <div class="toolbar-field">
+            <span class="toolbar-label"><i class="fas fa-euro-sign"></i> {{ _('Price') }}</span>
+            <div class="price-inputs">
+                <input type="number" name="min_price" class="toolbar-input" placeholder="{{ _('Min') }}" min="0" step="any"
+                       value="{{ filters.min_price }}" aria-label="{{ _('Minimum price') }}">
+                <span class="price-sep">–</span>
+                <input type="number" name="max_price" class="toolbar-input" placeholder="{{ _('Max') }}" min="0" step="any"
+                       value="{{ filters.max_price }}" aria-label="{{ _('Maximum price') }}">
+            </div>
+        </div>
+
+        <label class="toolbar-field toolbar-sort">
+            <span class="toolbar-label"><i class="fas fa-sort-amount-down"></i> {{ _('Sort by') }}</span>
+            <select name="sort" class="toolbar-select">
+                <option value="newest" {{ 'selected' if filters.sort == 'newest' }}>{{ _('Newest') }}</option>
+                <option value="price_low" {{ 'selected' if filters.sort == 'price_low' }}>{{ _('Price: low to high') }}</option>
+                <option value="price_high" {{ 'selected' if filters.sort == 'price_high' }}>{{ _('Price: high to low') }}</option>
+                <option value="top_rated" {{ 'selected' if filters.sort == 'top_rated' }}>{{ _('Top rated') }}</option>
+                <option value="name_az"{{ 'selected' if filters.sort == 'name_az' }}>{{ _('Name: A to Z') }}</option>
+                <option value="name_za" {{ 'selected' if filters.sort == 'name_za' }}>{{ _('Name: Z to A') }}</option>
+                <option value="oldest" {{ 'selected' if filters.sort == 'oldest' }}>{{ _('Oldest') }}</option>
+            </select>
+        </label>
+
+        <button type="submit" class="btn btn-primary btn-sm toolbar-apply">{{ _('Apply') }}</button>
+    </form>
+
+    <div class="shop-results" id="shopResults" aria-live="polite">
+        {% include 'shop/_results.html' %}
+    </div>
+</section>
+
+<!-- Filled from localStorage by strips.js; hidden until there is something to show -->
+<section class="product-strip" id="recentStrip" hidden>
+    <div class="strip-header">
+        <h2><i class="fas fa-history"></i> {{ _('Recently viewed') }}</h2>
+        <button type="button" class="link-btn" data-clear-recent>{{ _('Clear') }}</button>
+    </div>
+    <div class="strip-track" data-strip-track></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/shop.js') }}"></script>
+<script src="{{ url_for('static', filename='js/strips.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+{% from 'shop/_product_card.html' import product_card, product_image with context %}
+{% from 'shop/_stars.html' import stars with context %}
+
+{% set name = product|localized('name') %}
+{% set description = product|localized('description') %}
+
+{% block title %}{{ name }} - eShop{% endblock %}
+
+{% block content %}
+{% set stock = product.stock_quantity %}
+<div class="product-page" data-product-id="{{ product.product_id }}">
+    <nav class="breadcrumb" aria-label="{{ _('Breadcrumb') }}">
+        <a href="{{ url_for('main.home') }}"><i class="fas fa-home"></i> {{ _('Home') }}</a>
+        <i class="fas fa-chevron-right breadcrumb-sep"></i>
+        {% if product.category %}
+        <a href="{{ url_for('main.home', category=product.category) }}">{{ category_label(product.category) }}</a>
+        <i class="fas fa-chevron-right breadcrumb-sep"></i>
+        {% endif %}
+        <span aria-current="page">{{ name }}</span>
+    </nav>
+
+    <div class="product-layout">
+        <!-- Product Image (hover to zoom, see product.js) -->
+        <div class="product-gallery">
+            <div class="gallery-frame {{ 'has-image' if product.image_url }}" id="galleryFrame">
+                {{ product_image(product, 'main-product-image', full=True) }}
+                {% if stock == 0 %}
+                <span class="badge badge-dark gallery-badge">{{ _('Sold out') }}</span>
+                {% elif stock < 10 %}
+                <span class="badge badge-warning gallery-badge">{{ _('Only {n} left', n=stock) }}</span>
+                {% endif %}
+                {% if product.image_url %}
+                <span class="gallery-hint">
+                    <i class="fas fa-search-plus"></i>
+                    <span class="hint-hover">{{ _('Hover to zoom') }}</span>
+                    <span class="hint-touch">{{ _('Tap to zoom') }}</span>
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Product Info -->
+        <div class="product-details">
+            <a href="{{ url_for('main.home', category=product.category) if product.category else url_for('main.home') }}" class="product-category-chip">
+                {{ category_label(product.category) }}
+            </a>
+            <h1 class="product-title">{{ name }}</h1>
+
+            <a href="#reviews" class="product-rating-link" data-open-reviews>
+                {% if review_summary.count %}
+                {{ stars(review_summary.average) }}
+                <strong>{{ review_summary.average }}</strong>
+                <span>{{ ngettext('{n} review', '{n} reviews', review_summary.count) }}</span>
+                {% else %}
+                {{ stars(0) }}
+                <span>{{ _('Be the first to review') }}</span>
+                {% endif %}
+            </a>
+
+            <div class="product-price-row">
+                <span class="product-price">{{ product.price|currency }}</span>
+                {% if stock == 0 %}
+                <span class="stock-pill stock-out"><span class="stock-dot"></span> {{ _('Out of stock') }}</span>
+                {% elif stock < 10 %}
+                <span class="stock-pill stock-low"><span class="stock-dot"></span> {{ _('Low stock · {n} left', n=stock) }}</span>
+                {% else %}
+                <span class="stock-pill stock-in"><span class="stock-dot"></span> {{ _('In stock · {n} available', n=stock) }}</span>
+                {% endif %}
+            </div>
+
+            {% if description %}
+            <p class="product-lead">{{ description|truncate(220) }}</p>
+            {% endif %}
+
+            {% if stock > 0 %}
+            <form action="{{ url_for('cart.add_to_cart') }}" method="post" class="purchase-box add-to-cart-form"
+                  data-open-drawer data-price="{{ product.price }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="product_id" value="{{ product.product_id }}">
+
+                <label for="quantity" class="purchase-label">{{ _('Quantity') }}</label>
+                <div class="purchase-row">
+                    <div class="qty-stepper" data-stepper>
+                        <button type="button" class="qty-step" data-step="-1" aria-label="{{ _('Decrease quantity') }}">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <input type="number" id="quantity" name="quantity" value="1" min="1" max="{{ stock }}"
+                               inputmode="numeric" class="qty-input">
+                        <button type="button" class="qty-step" data-step="1" aria-label="{{ _('Increase quantity') }}">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg btn-add-to-cart">
+                        <i class="fas fa-shopping-bag"></i>
+                        <span>{{ _('Add to cart') }}</span>
+                        <span class="btn-total" data-line-total>{{ product.price|currency }}</span>
+                    </button>
+
+                    <button type="button" class="icon-btn wishlist-btn-lg" data-wishlist-toggle
+                            data-product-id="{{ product.product_id }}" aria-label="{{ _('Save for later') }}" aria-pressed="false">
+                        <i class="far fa-heart"></i>
+                    </button>
+                </div>
+                <p class="stepper-hint" data-stepper-hint aria-live="polite"></p>
+            </form>
+            {% else %}
+            <div class="sold-out-box">
+                <div>
+                    <strong><i class="fas fa-box-open"></i> {{ _('Currently out of stock') }}</strong>
+                    <p>{{ _('Save it for later and check back soon.') }}</p>
+                </div>
+                <button type="button" class="btn btn-outline" data-wishlist-toggle data-product-id="{{ product.product_id }}" aria-pressed="false">
+                    <i class="far fa-heart"></i> <span>{{ _('Save for later') }}</span>
+                </button>
+            </div>
+            {% endif %}
+
+            <ul class="product-perks">
+                <li>
+                    <span class="perk-icon"><i class="fas fa-shipping-fast"></i></span>
+                    <div><strong>{{ _('Free shipping') }}</strong><span>{{ _('On orders over {amount} €', amount=config.FREE_SHIPPING_THRESHOLD) }}</span></div>
+                </li>
+                <li>
+                    <span class="perk-icon"><i class="fas fa-undo"></i></span>
+                    <div><strong>{{ _('30-day returns') }}</strong><span>{{ _('Easy return policy') }}</span></div>
+                </li>
+                <li>
+                    <span class="perk-icon"><i class="fas fa-shield-alt"></i></span>
+                    <div><strong>{{ _('2-year warranty') }}</strong><span>{{ _('Included') }}</span></div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Product Tabs -->
+    <div class="product-tabs">
+        <div class="tabs-header" role="tablist" aria-label="{{ _('Product information') }}">
+            <button type="button" class="tab-btn active" role="tab" id="tab-description" aria-controls="description" aria-selected="true">{{ _('Description') }}</button>
+            <button type="button" class="tab-btn" role="tab" id="tab-specifications" aria-controls="specifications" aria-selected="false" tabindex="-1">{{ _('Specifications') }}</button>
+            <button type="button" class="tab-btn" role="tab" id="tab-shipping" aria-controls="shipping" aria-selected="false" tabindex="-1">{{ _('Shipping & Returns') }}</button>
+            <button type="button" class="tab-btn" role="tab" id="tab-reviews" aria-controls="reviews" aria-selected="false" tabindex="-1">
+                {{ _('Reviews') }} <span class="tab-count">{{ review_summary.count }}</span>
+            </button>
+        </div>
+
+        <div class="tabs-content">
+            <div class="tab-pane active" id="description" role="tabpanel" aria-labelledby="tab-description">
+                <h3>{{ _('Product details') }}</h3>
+                <p>{{ description or _('Detailed product description coming soon.') }}</p>
+            </div>
+
+            <div class="tab-pane" id="specifications" role="tabpanel" aria-labelledby="tab-specifications" hidden>
+                <h3>{{ _('Specifications') }}</h3>
+                <dl class="specs-grid">
+                    <div class="spec-item"><dt>{{ _('Category') }}</dt><dd>{{ category_label(product.category) }}</dd></div>
+                    <div class="spec-item"><dt>{{ _('SKU') }}</dt><dd>#{{ product.product_id }}</dd></div>
+                    <div class="spec-item"><dt>{{ _('Availability') }}</dt><dd>{{ ngettext('{n} unit in stock', '{n} units in stock', stock) }}</dd></div>
+                    <div class="spec-item"><dt>{{ _('Price') }}</dt><dd>{{ product.price|currency }}</dd></div>
+                </dl>
+            </div>
+
+            <div class="tab-pane" id="shipping" role="tabpanel" aria-labelledby="tab-shipping" hidden>
+                <div class="shipping-info">
+                    <div>
+                        <h4><i class="fas fa-shipping-fast"></i> {{ _('Shipping') }}</h4>
+                        <ul>
+                            <li>{{ _('Free standard shipping on orders over {amount} €', amount=config.FREE_SHIPPING_THRESHOLD) }}</li>
+                            <li>{{ _('Express shipping available for 9.99 €') }}</li>
+                            <li>{{ _('Usually ships within 1-2 business days') }}</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4><i class="fas fa-undo"></i> {{ _('Returns') }}</h4>
+                        <ul>
+                            <li>{{ _('30-day money-back guarantee') }}</li>
+                            <li>{{ _('Free returns for unused items') }}</li>
+                            <li>{{ _('Return shipping paid by customer') }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane" id="reviews" role="tabpanel" aria-labelledby="tab-reviews" hidden>
+                <div class="reviews-layout">
+                    <aside class="reviews-summary">
+                        <div class="reviews-average">
+                            <span class="reviews-average-value">{{ review_summary.average if review_summary.count else '–' }}</span>
+                            <div>
+                                {{ stars(review_summary.average) }}
+                                <span class="reviews-total">{{ ngettext('Based on {n} review', 'Based on {n} reviews', review_summary.count) }}</span>
+                            </div>
+                        </div>
+
+                        <ul class="rating-bars">
+                            {% for row in review_summary.breakdown %}
+                            <li>
+                                <span class="rating-bar-label">{{ row.stars }} <i class="fas fa-star"></i></span>
+                                <span class="rating-bar" aria-hidden="true"><span style="width: {{ row.percent }}%"></span></span>
+                                <span class="rating-bar-count">{{ row.count }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </aside>
+
+                    <div class="reviews-main">
+                        {% if session.user_id %}
+                        {% set review_form %}
+                        <form action="{{ url_for('reviews.save_review', product_id=product.product_id) }}" method="post" class="review-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                            <fieldset class="star-input">
+                                <legend>{{ _('Your rating') }}</legend>
+                                <div class="star-input-options">
+                                    {# Highest first: with row-reverse, hovering a star also lights the ones before it #}
+                                    {% for n in range(5, 0, -1) %}
+                                    <input type="radio" id="rating-{{ n }}" name="rating" value="{{ n }}" class="visually-hidden" required
+                                           {{ 'checked' if own_review and own_review.rating == n }}>
+                                    <label for="rating-{{ n }}" title="{{ ngettext('{n} star', '{n} stars', n) }}">
+                                        <i class="fas fa-star"></i>
+                                        <span class="visually-hidden">{{ ngettext('{n} star', '{n} stars', n) }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </fieldset>
+
+                            <div class="form-group">
+                                <label for="review-title">{{ _('Title') }} <span class="optional-tag">{{ _('optional') }}</span></label>
+                                <input type="text" id="review-title" name="title" maxlength="100"
+                                       value="{{ own_review.title or '' if own_review }}" placeholder="{{ _('Sum it up in a few words') }}">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="review-body">{{ _('Your review') }}</label>
+                                <textarea id="review-body" name="body" rows="4" minlength="10" maxlength="2000" required
+                                          placeholder="{{ _('What did you like or dislike? How did you use it?') }}">{{ own_review.body if own_review }}</textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> {{ _('Update review') if own_review else _('Post review') }}
+                            </button>
+                        </form>
+                        {% endset %}
+
+                        {% if own_review %}
+                        <details class="review-form-box">
+                            <summary><i class="fas fa-pen"></i> {{ _('Edit your review') }}</summary>
+                            {{ review_form }}
+                        </details>
+                        {% else %}
+                        <div class="review-form-box">
+                            <h3>{{ _('Write a review') }}</h3>
+                            {{ review_form }}
+                        </div>
+                        {% endif %}
+                        {% else %}
+                        <div class="review-form-box review-login">
+                            <p>{{ _('Have you used this product? Share your thoughts with other customers.') }}</p>
+                            <a href="{{ url_for('auth.login', next=url_for('main.product_detail', product_id=product.product_id, _anchor='reviews')) }}" class="btn btn-outline">
+                                <i class="fas fa-sign-in-alt"></i> {{ _('Log in to write a review') }}
+                            </a>
+                        </div>
+                        {% endif %}
+
+                        {% if reviews %}
+                        <ol class="review-list">
+                            {% for review in reviews %}
+                            <li class="review{{ ' is-own' if review.user_id == session.user_id }}">
+                                <div class="review-header">
+                                    <span class="review-avatar" aria-hidden="true">{{ review.username[:1]|upper }}</span>
+                                    <div class="review-meta">
+                                        <strong>{{ review.username }}</strong>
+                                        {% if review.verified %}
+                                        <span class="review-verified"><i class="fas fa-check-circle"></i> {{ _('Verified purchase') }}</span>
+                                        {% endif %}
+                                        <span class="review-date">
+                                            {{ review.created_at[:10] }}{% if review.updated_at %} · {{ _('edited') }}{% endif %}
+                                        </span>
+                                    </div>
+                                    {% if review.user_id == session.user_id or session.role == 'admin' %}
+                                    <form action="{{ url_for('reviews.delete_review', review_id=review.review_id) }}" method="post" class="review-delete">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="icon-btn" aria-label="{{ _('Delete review') }}" title="{{ _('Delete review') }}"
+                                                data-confirm="{{ _('Delete this review?') }}">
+                                            <i class="far fa-trash-alt"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                                {{ stars(review.rating) }}
+                                {% if review.title %}<h4 class="review-title">{{ review.title }}</h4>{% endif %}
+                                <p class="review-body">{{ review.body }}</p>
+                            </li>
+                            {% endfor %}
+                        </ol>
+                        {% else %}
+                        <div class="reviews-placeholder">
+                            <i class="far fa-comments"></i>
+                            <p>{{ _('No reviews yet for this product.') }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if related %}
+    <section class="related-section">
+        <div class="section-heading">
+            <h2>{{ _('You might also like') }}</h2>
+            {% if product.category %}
+            <a href="{{ url_for('main.home', category=product.category) }}" class="section-link">
+                {{ _('More in {category}', category=category_label(product.category)) }} <i class="fas fa-arrow-right"></i>
+            </a>
+            {% endif %}
+        </div>
+        <div class="products-grid products-grid-4">
+            {% for item in related %}
+                {{ product_card(item, loop.index0) }}
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/product.js') }}"></script>
+{% endblock %}

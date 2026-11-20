@@ -1,0 +1,149 @@
+{% set current_category = request.args.get('category', '') if request.endpoint == 'main.home' else None %}
+<header class="main-header" id="mainHeader">
+    <div class="header-bar">
+        <a href="{{ url_for('main.home') }}" class="logo" aria-label="{{ _('eShop home') }}">
+            <span class="logo-mark"><i class="fas fa-store"></i></span>
+            <span class="logo-text">eShop</span>
+        </a>
+
+        <!-- Search Bar with Integrated Categories Button and live suggestions -->
+        <div class="header-search-container">
+            <form method="get" action="{{ url_for('main.home') }}" class="header-search-form" id="headerSearchForm" role="search">
+                <div class="header-search-group">
+                    <button type="button" class="categories-search-btn" id="categoriesToggle"
+                            aria-controls="categoriesSidebar" aria-expanded="false">
+                        <i class="fas fa-th-large"></i>
+                        <span>{{ _('Categories') }}</span>
+                    </button>
+
+                    <input type="search" name="q" id="headerSearchInput" class="header-search-input"
+                           placeholder="{{ _('Search products or categories…') }}" autocomplete="off"
+                           value="{{ request.args.get('q', '') if request.endpoint == 'main.home' }}"
+                           role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="searchSuggestions">
+                    <button type="submit" class="header-search-btn" aria-label="{{ _('Search') }}">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="search-suggestions" id="searchSuggestions" role="listbox" hidden></div>
+            </form>
+        </div>
+
+        <nav class="main-nav" aria-label="{{ _('Main') }}">
+            <!-- Language Selector: /language/<code> remembers the choice and comes back here -->
+            <div class="language-selector">
+                <button type="button" class="language-btn nav-link" aria-haspopup="true" aria-expanded="false"
+                        aria-label="{{ _('Language') }}">
+                    <i class="fas fa-globe"></i>
+                    <span>{{ current_language|upper }}</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="language-menu">
+                    {% for code, label in LANGUAGES.items() %}
+                    <a href="{{ url_for('main.set_language', code=code) }}" lang="{{ code }}"
+                       class="language-option {{ 'active' if code == current_language }}"
+                       {% if code == current_language %}aria-current="true"{% endif %}>
+                        <span>{{ label }}</span>
+                        {% if code == current_language %}<i class="fas fa-check"></i>{% endif %}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Cart: opens the cart drawer (base.js), falls back to the cart page -->
+            <a href="{{ url_for('cart.view_cart') }}" class="nav-link cart-link" id="cartToggle" aria-label="{{ _('Cart') }}">
+                <span class="cart-icon">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span class="cart-count" {% if not cart_count %}hidden{% endif %}>{{ cart_count }}</span>
+                </span>
+                <span class="nav-label">{{ _('Cart') }}</span>
+            </a>
+
+            <!-- User Menu -->
+            {% if 'user_id' in session %}
+            <div class="user-dropdown">
+                <button type="button" class="user-menu-btn nav-link" id="userMenuToggle" aria-haspopup="true" aria-expanded="false">
+                    <span class="user-avatar">{{ session['username'][:1]|upper }}</span>
+                    <span class="nav-label">{{ session['username'] }}</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="user-dropdown-menu" id="userDropdown">
+                    <div class="dropdown-header">
+                        {{ _('Signed in as {name}', name=session['username']) }}
+                    </div>
+                    <a href="{{ url_for('main.saved') }}" class="dropdown-item">
+                        <i class="fas fa-heart"></i>
+                        {{ _('Saved items') }}
+                        <span class="dropdown-count" data-wishlist-count hidden></span>
+                    </a>
+                    {% if session['role'] != 'admin' %}
+                    <a href="{{ url_for('orders.user_orders') }}" class="dropdown-item">
+                        <i class="fas fa-receipt"></i>
+                        {{ _('My Orders') }}
+                    </a>
+                    {% endif %}
+                    {% if session['role'] == 'admin' %}
+                    <a href="{{ url_for('admin.products') }}" class="dropdown-item">
+                        <i class="fas fa-cog"></i>
+                        {{ _('Admin Panel') }}
+                    </a>
+                    <a href="{{ url_for('orders.user_orders') }}" class="dropdown-item">
+                        <i class="fas fa-receipt"></i>
+                        {{ _('All Orders') }}
+                    </a>
+                    {% endif %}
+                    <div class="dropdown-divider"></div>
+                    <form method="POST" action="{{ url_for('auth.logout') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="dropdown-item">
+                            <i class="fas fa-sign-out-alt"></i>
+                            {{ _('Logout') }}
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <div class="auth-links">
+                <a href="{{ url_for('auth.login') }}" class="nav-link">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span class="nav-label">{{ _('Login') }}</span>
+                </a>
+                <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm register-btn">
+                    <span>{{ _('Sign up') }}</span>
+                </a>
+            </div>
+            {% endif %}
+        </nav>
+    </div>
+</header>
+
+<!-- Categories Sidebar -->
+<aside class="categories-sidebar" id="categoriesSidebar" aria-label="{{ _('Categories') }}" aria-hidden="true">
+    <div class="sidebar-header">
+        <h3><i class="fas fa-th-large"></i> {{ _('Shop by category') }}</h3>
+        <button type="button" class="icon-btn close-sidebar" id="closeCategories" aria-label="{{ _('Close categories') }}">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div class="sidebar-content">
+        <nav class="categories-list" id="categoriesList">
+            <a href="{{ url_for('main.home') }}" class="category-sidebar-item {{ 'active' if current_category == '' }}"
+               data-shop-link data-category="">
+                <span><i class="fas fa-border-all"></i> {{ _('All products') }}</span>
+            </a>
+            {% for category in global_categories %}
+            {% set art = placeholder_art(category.name) %}
+            <a href="{{ url_for('main.home', category=category.name) }}"
+               class="category-sidebar-item {{ 'active' if current_category == category.name }}"
+               data-shop-link data-category="{{ category.name }}">
+                <span><i class="fas {{ art.icon }}" style="--hue: {{ art.hue }}"></i> {{ category_label(category.name) }}</span>
+                <span class="category-count">{{ category.count }}</span>
+            </a>
+            {% else %}
+            <div class="empty-state">{{ _('No categories yet') }}</div>
+            {% endfor %}
+        </nav>
+    </div>
+</aside>
+
+<!-- Overlay for sidebar -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>

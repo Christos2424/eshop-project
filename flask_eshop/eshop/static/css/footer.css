@@ -1,0 +1,172 @@
+/* Footer */
+.main-footer {
+    background: var(--ink);
+    color: var(--on-dark-muted);
+    padding: 2.25rem 0 1rem;
+    margin-top: 3rem;
+    font-size: 0.9rem;
+}
+
+.footer-content {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 1fr 1.2fr;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.footer-section h4 {
+    color: #fff;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.7rem;
+}
+
+.footer-section a {
+    display: block;
+    color: var(--on-dark-muted);
+    text-decoration: none;
+    margin-bottom: 0.4rem;
+    transition: color 0.2s ease;
+}
+
+/* Logout is a form button styled like the links around it */
+.footer-link-button {
+    display: block;
+    padding: 0;
+    margin-bottom: 0.4rem;
+    border: none;
+    background: none;
+    color: var(--on-dark-muted);
+    font-size: inherit;
+    transition: color 0.2s ease;
+}
+
+.footer-link-button:hover,
+.footer-section a:hover {
+    color: #fff;
+}
+
+.footer-section p {
+    margin-bottom: 0.4rem;
+}
+
+.footer-section p i {
+    width: 18px;
+    margin-right: 0.4rem;
+    color: var(--accent-light);
+}
+
+.footer-brand .logo {
+    margin-bottom: 0.6rem;
+}
+
+.logo-light .logo-text {
+    color: #fff;
+}
+
+.footer-brand p {
+    max-width: 320px;
+}
+
+.footer-perks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.footer-perks span {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--line-dark);
+    border-radius: 999px;
+    font-size: 0.8rem;
+    color: #bbbdbc;
+}
+
+.footer-perks i {
+    color: var(--accent-light);
+    margin-right: 0.3rem;
+}
+
+.footer-languages {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+}
+
+.footer-section .footer-languages a {
+    margin: 0;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--line-dark);
+    border-radius: 999px;
+    font-size: 0.8rem;
+}
+
+.footer-section .footer-languages a.active {
+    border-color: var(--accent-light);
+    color: #fff;
+}
+
+.footer-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line-dark);
+    font-size: 0.85rem;
+}
+
+.payment-icons {
+    display: flex;
+    gap: 0.75rem;
+    font-size: 1.4rem;
+    color: #8a9599;
+}
+
+/* Footer Responsive */
+@media (max-width: 900px) {
+    .footer-content {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* Phones: brand and contact span the width, Shop and Account sit side by side */
+@media (max-width: 560px) {
+    .main-footer {
+        padding-top: 1.75rem;
+        margin-top: 2rem;
+    }
+
+    .footer-content {
+        gap: 1.25rem 1rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .footer-brand,
+    .footer-content > .footer-section:last-child {
+        grid-column: 1 / -1;
+    }
+
+    .footer-brand p {
+        font-size: 0.85rem;
+    }
+
+    .footer-perks span {
+        font-size: 0.75rem;
+        padding: 0.3rem 0.6rem;
+    }
+
+    .footer-section a,
+    .footer-link-button {
+        padding: 0.15rem 0;
+    }
+
+    .footer-bottom {
+        flex-direction: column-reverse;
+        gap: 0.6rem;
+        text-align: center;
+        font-size: 0.8rem;
+    }
+}

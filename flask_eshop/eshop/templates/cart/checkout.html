@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% from 'shop/_product_card.html' import product_image with context %}
+
+{% block title %}{{ _('Checkout') }} - eShop{% endblock %}
+
+{% block content %}
+<div class="checkout-page">
+    <ol class="checkout-steps" aria-label="{{ _('Checkout progress') }}">
+        <li class="done"><span class="step-dot"><i class="fas fa-check"></i></span> {{ _('Cart') }}</li>
+        <li class="current" aria-current="step"><span class="step-dot">2</span> {{ _('Details') }}</li>
+        <li><span class="step-dot">3</span> {{ _('Confirmation') }}</li>
+    </ol>
+
+    {% if cart_items %}
+    <div class="checkout-layout">
+        <!-- Checkout Form (validated by checkout.js) -->
+        <form action="{{ url_for('cart.checkout') }}" method="POST" class="checkout-form" id="checkoutForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <section class="checkout-card">
+                <h2 class="checkout-card-title"><span class="title-num">1</span> {{ _('Shipping information') }}</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="firstName">{{ _('First name') }}</label>
+                        <input type="text" id="firstName" name="firstName" autocomplete="given-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lastName">{{ _('Last name') }}</label>
+                        <input type="text" id="lastName" name="lastName" autocomplete="family-name" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">{{ _('Email address') }}</label>
+                    <input type="email" id="email" name="email" autocomplete="email" value="{{ session.get('email', '') }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="address">{{ _('Street address') }}</label>
+                    <input type="text" id="address" name="address" autocomplete="street-address" required>
+                </div>
+
+                <div class="form-row form-row-3">
+                    <div class="form-group">
+                        <label for="city">{{ _('City') }}</label>
+                        <input type="text" id="city" name="city" autocomplete="address-level2" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="zipCode">{{ _('ZIP code') }}</label>
+                        <input type="text" id="zipCode" name="zipCode" autocomplete="postal-code" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="country">{{ _('Country') }}</label>
+                        <select id="country" name="country" autocomplete="country" required>
+                            <option value="">{{ _('Select…') }}</option>
+                            <option value="GR">{{ _('Greece') }}</option>
+                            <option value="CY">{{ _('Cyprus') }}</option>
+                            <option value="US">{{ _('United States') }}</option>
+                            <option value="CA">{{ _('Canada') }}</option>
+                            <option value="UK">{{ _('United Kingdom') }}</option>
+                            <option value="DE">{{ _('Germany') }}</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <section class="checkout-card">
+                <h2 class="checkout-card-title"><span class="title-num">2</span> {{ _('Payment method') }}</h2>
+                <div class="payment-methods">
+                    <div class="payment-method">
+                        <input type="radio" id="creditCard" name="paymentMethod" value="credit" checked>
+                        <label for="creditCard">
+                            <i class="fas fa-credit-card"></i>
+                            <span>{{ _('Credit card') }}</span>
+                        </label>
+                    </div>
+                    <div class="payment-method">
+                        <input type="radio" id="paypal" name="paymentMethod" value="paypal">
+                        <label for="paypal">
+                            <i class="fab fa-paypal"></i>
+                            <span>PayPal</span>
+                        </label>
+                    </div>
+                    <div class="payment-method">
+                        <input type="radio" id="applePay" name="paymentMethod" value="applepay">
+                        <label for="applePay">
+                            <i class="fab fa-apple-pay"></i>
+                            <span>Apple Pay</span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <div class="checkout-actions">
+                <a href="{{ url_for('cart.view_cart') }}" class="btn btn-outline">
+                    <i class="fas fa-arrow-left"></i> {{ _('Back to cart') }}
+                </a>
+                <button type="submit" class="btn btn-primary btn-lg btn-checkout">
+                    <i class="fas fa-lock"></i> <span data-place-order-label>{{ _('Place order · {total}', total=totals.total|currency) }}</span>
+                </button>
+            </div>
+        </form>
+
+        <!-- Order Summary -->
+        <aside class="summary-card checkout-summary">
+            <h2>{{ _('Order summary') }}</h2>
+
+            <ul class="summary-items">
+                {% for item in cart_items %}
+                {% set name = item.product|localized('name') %}
+                <li class="summary-item" data-product-id="{{ item.product.product_id }}">
+                    <span class="summary-item-media">
+                        {{ product_image(item.product, 'summary-item-image') }}
+                    </span>
+                    <div class="summary-item-info">
+                        <span class="summary-item-name">{{ name }}</span>
+                        <div class="cart-item-qty">
+                            <form action="{{ url_for('cart.update_cart') }}" method="post" class="cart-qty-form" data-step="-1">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="product_id" value="{{ item.product.product_id }}">
+                                <input type="hidden" name="quantity" value="{{ item.quantity - 1 }}">
+                                <button type="submit" class="qty-btn" data-remove-label="{{ _('Remove {name}', name=name) }}"
+                                        aria-label="{{ _('Remove {name}', name=name) if item.quantity <= 1 else _('Decrease quantity') }}">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                            </form>
+                            <span class="qty-value" data-qty aria-label="{{ _('Quantity') }}">{{ item.quantity }}</span>
+                            <form action="{{ url_for('cart.update_cart') }}" method="post" class="cart-qty-form" data-step="1">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="product_id" value="{{ item.product.product_id }}">
+                                <input type="hidden" name="quantity" value="{{ item.quantity + 1 }}">
+                                <button type="submit" class="qty-btn" aria-label="{{ _('Increase quantity') }}" {{ 'disabled' if item.quantity >= item.product.stock_quantity }}>
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <span class="summary-item-price" data-line-total>{{ item.total|currency }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+
+            <dl class="summary-lines">
+                <div class="summary-line">
+                    <dt>{{ _('Subtotal') }}</dt>
+                    <dd data-cart-field="subtotal">{{ totals.subtotal|currency }}</dd>
+                </div>
+                <div class="summary-line">
+                    <dt>{{ _('Shipping') }}</dt>
+                    <dd data-cart-field="shipping">{{ _('Free') if totals.shipping == 0 else totals.shipping|currency }}</dd>
+                </div>
+                <div class="summary-line">
+                    <dt>{{ _('Tax ({rate}%)', rate=(config.TAX_RATE * 100)|round|int) }}</dt>
+                    <dd data-cart-field="tax">{{ totals.tax|currency }}</dd>
+                </div>
+                <div class="summary-line summary-total">
+                    <dt>{{ _('Total') }}</dt>
+                    <dd data-cart-field="total">{{ totals.total|currency }}</dd>
+                </div>
+            </dl>
+
+            <div class="security-features">
+                <div class="security-item"><i class="fas fa-lock"></i> {{ _('256-bit SSL encryption') }}</div>
+                <div class="security-item"><i class="fas fa-shield-alt"></i> {{ _('PCI DSS compliant') }}</div>
+                <div class="security-item"><i class="fas fa-user-shield"></i> {{ _('Your data is protected') }}</div>
+            </div>
+        </aside>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon"><i class="fas fa-shopping-bag"></i></div>
+        <h3>{{ _('Your cart is empty') }}</h3>
+        <p>{{ _('Add some items to your cart before checking out') }}</p>
+        <a href="{{ url_for('main.home') }}" class="btn btn-primary">
+            <i class="fas fa-store"></i> {{ _('Continue shopping') }}
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/checkout.js') }}"></script>
+{% endblock %}
